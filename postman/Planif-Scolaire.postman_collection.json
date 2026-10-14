@@ -1,0 +1,710 @@
+{
+  "info": {
+    "name": "Planif-Scolaire v1.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Executer toute la collection dans le Runner avec un delai de 1000 ms. Les trois services et Kafka doivent etre demarres. Chaque execution cree ses propres donnees."
+  },
+  "variable": [
+    {
+      "key": "referentielUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "planningUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "presencesUrl",
+      "value": "http://localhost:8083"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Creer une classe",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/classes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Classe {{runId}}\", \"niveau\": \"6e\", \"effectifMax\": 30}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"runId\", Date.now().toString());",
+              "pm.collectionVariables.set(\"tentatives\", 0);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Ressource creee\", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header(\"Location\"); });",
+              "pm.collectionVariables.set(\"classeId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Lire la classe",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/classes/{{classeId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Classe sauvegardee\", () => pm.expect(pm.response.json().effectifMax).to.eql(30));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Modifier la classe",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/classes/{{classeId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Classe {{runId}}\", \"niveau\": \"6e\", \"effectifMax\": 32}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Modification\", () => pm.expect(pm.response.json().effectifMax).to.eql(32));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Classe invalide",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/classes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"\", \"niveau\": \"\", \"effectifMax\": 0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(400); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Classe inexistante",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/classes/9223372036854775807"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(404); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Creer un enseignant",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/enseignants",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Enseignant {{runId}}\", \"matiere\": \"Maths\", \"chargeMaxHeures\": 20}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Ressource creee\", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header(\"Location\"); });",
+              "pm.collectionVariables.set(\"enseignantId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Lire un enseignant",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/enseignants/{{enseignantId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Enseignant invalide",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/enseignants",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"\", \"matiere\": \"\", \"chargeMaxHeures\": 0}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(400); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Enseignant inexistant",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{referentielUrl}}/api/enseignants/9223372036854775807"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(404); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Creer un cours",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"classeId\": {{classeId}}, \"enseignantId\": {{enseignantId}}, \"matiere\": \"Maths\", \"dateHeure\": \"2026-11-02T09:00:00\", \"salle\": \"Salle {{runId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Ressource creee\", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header(\"Location\"); });",
+              "pm.collectionVariables.set(\"coursId\", pm.response.json().id);",
+              "pm.test(\"Cours planifie\", () => pm.expect(pm.response.json().statut).to.eql(\"PLANIFIE\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Lire un cours",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours/{{coursId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Cours invalide",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(400); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Cours inexistant",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours/9223372036854775807"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(404); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 Conflit de creneau",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"classeId\": {{classeId}}, \"enseignantId\": {{enseignantId}}, \"matiere\": \"Maths\", \"dateHeure\": \"2026-11-02T09:00:00\", \"salle\": \"Salle {{runId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(409); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 Attendre la feuille appel",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/cours/{{coursId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const n = Number(pm.collectionVariables.get(\"tentatives\") || 0);",
+              "if (pm.response.code === 404 && n < 30) {",
+              "  pm.collectionVariables.set(\"tentatives\", n + 1);",
+              "  pm.execution.setNextRequest(pm.info.requestName);",
+              "} else {",
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set(\"appelId\", pm.response.json().id);",
+              "pm.test(\"Appel du cours\", () => pm.expect(String(pm.response.json().coursId)).to.eql(String(pm.collectionVariables.get(\"coursId\"))));",
+              "  pm.collectionVariables.set(\"tentatives\", 0);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 Refuser absence avant realisation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/{{appelId}}/absences",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantNom\": \"Sara {{runId}}\", \"motif\": \"Maladie\", \"justifiee\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(409); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 Realiser le cours",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours/{{coursId}}/statut",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"statut\": \"REALISE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cours realise\", () => pm.expect(pm.response.json().statut).to.eql(\"REALISE\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 Saisir une absence",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/{{appelId}}/absences",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantNom\": \"Sara {{runId}}\", \"motif\": \"Maladie\", \"justifiee\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Ressource creee\", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header(\"Location\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19 Lister les absences",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/{{appelId}}/absences"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Absence enregistree\", () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20 Absence invalide",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/{{appelId}}/absences",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(400); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21 Appel inexistant",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/9223372036854775807"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(404); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "22 Absence sur appel inexistant",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{presencesUrl}}/api/appels/9223372036854775807/absences",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantNom\": \"Sara {{runId}}\", \"motif\": \"Maladie\", \"justifiee\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(404); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
