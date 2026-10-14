@@ -10,6 +10,8 @@
         <module>service-referentiel</module>
         <module>service-planning</module>
         <module>service-presences</module>
+        <module>service-registry</module>
+        <module>gateway-service</module>
         <module>integration-tests</module>
     </modules>
 </project>

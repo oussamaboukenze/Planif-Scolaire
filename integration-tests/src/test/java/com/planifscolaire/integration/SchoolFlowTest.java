@@ -50,6 +50,7 @@ class SchoolFlowTest {
                                         + module
                                         + "/src/main/resources/application.properties",
                         "--server.port=0",
+                                "--eureka.client.enabled=false",
                                 "--spring.datasource.url=jdbc:h2:mem:"
                                         + module
                                         + "-flow;DB_CLOSE_DELAY=-1",
