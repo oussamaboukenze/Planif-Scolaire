@@ -131,7 +131,12 @@ Prérequis : JDK 17 et Docker Compose pour Kafka. Les modules utilisent Spring B
 1. Ouvrir le `pom.xml` racine comme projet Maven, puis recharger les projets Maven.
 2. Choisir le JDK 17 dans Project SDK et dans le runner Maven.
 3. Démarrer Kafka depuis la racine : `docker compose up -d`.
-4. Exécuter `ServiceReferentielApplication`, `PlanningApplication` et `PresencesApplication` dans des configurations distinctes.
+4. Démarrer `ConfigServerApplication` (port 8888), puis `ServiceRegistryApplication` (port 8761).
+5. Exécuter `ServiceReferentielApplication`, `PlanningApplication` et `PresencesApplication` dans des configurations distinctes, puis `GatewayServiceApplication` (port 8080).
+
+Le serveur de configuration lit par défaut les fichiers locaux de `config-repo`. Son dossier de travail doit être la racine du projet ou le dossier `config-server`. Pour un autre dossier, définir `CONFIG_REPO_LOCATION=file:/chemin/absolu/config-repo/`. Le profil Git reste disponible avec `CONFIG_SERVER_PROFILE=git`. Les clients peuvent cibler un autre serveur avec `CONFIG_SERVER_URL`.
+
+Sur macOS ou Linux, utiliser `./mvnw spring-boot:run` depuis le dossier du service. Kafka doit être disponible avant le planning et les présences ; Docker Desktop doit être démarré avant `docker compose up -d`.
 
 Chaque service est également lançable depuis son propre dossier :
 

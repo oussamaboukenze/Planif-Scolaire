@@ -46,10 +46,10 @@ class SchoolFlowTest {
         List<String> args =
                 new ArrayList<>(
                         List.of(
-                                "--spring.config.location=file:../"
-                                        + module
-                                        + "/src/main/resources/application.properties",
-                        "--server.port=0",
+                                "--spring.config.location=file:../config-repo/" + module + ".properties",
+                                "--spring.application.name=" + module,
+                                "--spring.cloud.config.enabled=false",
+                                "--server.port=0",
                                 "--eureka.client.enabled=false",
                                 "--spring.datasource.url=jdbc:h2:mem:"
                                         + module
