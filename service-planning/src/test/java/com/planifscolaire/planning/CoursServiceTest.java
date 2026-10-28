@@ -50,7 +50,7 @@ class CoursServiceTest {
 
     @Test
     void creationPersistsCourseAndEventTogether() {
-        var c = service.create(request(1, 1, "A1"));
+        var c = service.create(request(1, 1, "A1"), UUID.randomUUID().toString());
         assertThat(c.getStatut()).isEqualTo(StatutCours.PLANIFIE);
         assertThat(c.getNbAbsencesSignalees()).isZero();
         assertThat(outbox.findAll())
@@ -66,12 +66,12 @@ class CoursServiceTest {
 
     @Test
     void rejectsTeacherClassAndRoomConflicts() {
-        service.create(request(1, 1, "A1"));
-        assertThatThrownBy(() -> service.create(request(2, 1, "A2")))
+        service.create(request(1, 1, "A1"), UUID.randomUUID().toString());
+        assertThatThrownBy(() -> service.create(request(2, 1, "A2"), UUID.randomUUID().toString()))
                 .isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> service.create(request(1, 2, "A2")))
+        assertThatThrownBy(() -> service.create(request(1, 2, "A2"), UUID.randomUUID().toString()))
                 .isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> service.create(request(2, 2, " a1 ")))
+        assertThatThrownBy(() -> service.create(request(2, 2, " a1 "), UUID.randomUUID().toString()))
                 .isInstanceOf(ApiException.class);
         assertThat(cours.count()).isEqualTo(1);
         assertThat(outbox.count()).isEqualTo(1);
@@ -79,19 +79,19 @@ class CoursServiceTest {
 
     @Test
     void cancellationReleasesSlotAndIsIdempotent() {
-        var c = service.create(request(1, 1, "A1"));
+        var c = service.create(request(1, 1, "A1"), UUID.randomUUID().toString());
         service.transition(c.getId(), StatutCours.ANNULE);
         service.transition(c.getId(), StatutCours.ANNULE);
         assertThat(outbox.findAll().stream().filter(e -> e.getTopic().equals(Events.CANCELLED)))
                 .hasSize(1);
-        assertThat(service.create(request(1, 1, "A1")).getStatut()).isEqualTo(StatutCours.PLANIFIE);
+        assertThat(service.create(request(1, 1, "A1"), UUID.randomUUID().toString()).getStatut()).isEqualTo(StatutCours.PLANIFIE);
         assertThatThrownBy(() -> service.transition(c.getId(), StatutCours.REALISE))
                 .isInstanceOf(ApiException.class);
     }
 
     @Test
     void realisedIsTerminal() {
-        var c = service.create(request(1, 1, "A1"));
+        var c = service.create(request(1, 1, "A1"), UUID.randomUUID().toString());
         service.transition(c.getId(), StatutCours.REALISE);
         assertThatThrownBy(() -> service.transition(c.getId(), StatutCours.ANNULE))
                 .isInstanceOf(ApiException.class);
@@ -101,7 +101,7 @@ class CoursServiceTest {
 
     @Test
     void duplicateEventDoesNotDoubleCount() {
-        var c = service.create(request(1, 1, "A1"));
+        var c = service.create(request(1, 1, "A1"), UUID.randomUUID().toString());
         service.transition(c.getId(), StatutCours.REALISE);
         var event = new AbsenceEvent(UUID.randomUUID(), c.getId(), 1L);
         service.onAbsence(event);
@@ -113,14 +113,14 @@ class CoursServiceTest {
     @Test
     void remoteFailureDoesNotCreateCourseOrEvent() {
         when(referentiel.classe(1L)).thenThrow(new RuntimeException("indisponible"));
-        assertThatThrownBy(() -> service.create(request(1, 1, "A1"))).hasMessage("indisponible");
+        assertThatThrownBy(() -> service.create(request(1, 1, "A1"), UUID.randomUUID().toString())).hasMessage("indisponible");
         assertThat(cours.count()).isZero();
         assertThat(outbox.count()).isZero();
     }
 
     @Test
     void subjectMustMatchTeacher() {
-        assertThatThrownBy(() -> service.create(new CreateCoursDto(1L, 1L, "Histoire", date, "A1")))
+        assertThatThrownBy(() -> service.create(new CreateCoursDto(1L, 1L, "Histoire", date, "A1"), UUID.randomUUID().toString()))
                 .isInstanceOf(ApiException.class);
     }
 
@@ -132,7 +132,7 @@ class CoursServiceTest {
                 () -> {
                     start.await();
                     try {
-                        service.create(request(1, 1, "A1"));
+                        service.create(request(1, 1, "A1"), UUID.randomUUID().toString());
                         return true;
                     } catch (ApiException e) {
                         return false;
@@ -148,5 +148,52 @@ class CoursServiceTest {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test
+    void duplicateKeyIsRejectedBeforeRemoteCallsEvenAfterCancellation() {
+        var c = service.create(request(1, 1, "A1"), "same-key");
+        service.transition(c.getId(), StatutCours.ANNULE);
+        clearInvocations(referentiel);
+        assertThatThrownBy(() -> service.create(request(2, 2, "A2"), "same-key"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Opération déjà traitée");
+        verifyNoInteractions(referentiel);
+        assertThat(cours.count()).isEqualTo(1);
+    }
+
+    @Test
+    void invalidKeysAreRejectedBeforeRemoteCalls() {
+        clearInvocations(referentiel);
+        for (String key : new String[] {null, "", " ", "x".repeat(256)}) {
+            assertThatThrownBy(() -> service.create(request(1, 1, "A1"), key))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        verifyNoInteractions(referentiel);
+        assertThat(cours.count()).isZero();
+        assertThat(outbox.count()).isZero();
+    }
+
+    @Test
+    void detailEnrichesLocalCourseWithoutChangingIt() {
+        var c = service.create(request(1, 1, "A1"), "detail-key");
+        when(referentiel.classe(1L)).thenReturn(new ClasseDto(1L, "6B", "6e", 30));
+        when(referentiel.enseignant(1L))
+                .thenReturn(new EnseignantDto(1L, "Nadia", "Histoire", 20));
+        var detail = service.getDetail(c.getId());
+        assertThat(detail.getClasse().getNom()).isEqualTo("6B");
+        assertThat(detail.getEnseignant().getNom()).isEqualTo("Nadia");
+        assertThat(detail.getMatiere()).isEqualTo("Maths");
+        assertThat(detail.getSalle()).isEqualTo("A1");
+        assertThat(detail.getDateHeure()).isEqualTo(date);
+        assertThat(service.get(c.getId()).getMatiere()).isEqualTo("Maths");
+    }
+
+    @Test
+    void missingLocalCourseDoesNotCallReferentiel() {
+        clearInvocations(referentiel);
+        assertThatThrownBy(() -> service.getDetail(Long.MAX_VALUE))
+                .isInstanceOf(com.planifscolaire.planning.exception.RessourceIntrouvableException.class);
+        verifyNoInteractions(referentiel);
     }
 }

@@ -1,0 +1,12 @@
+$kind: collection
+description: Executer toute la collection dans le Runner avec un delai de 1000 ms. Les trois services et Kafka doivent etre demarres. Chaque execution cree ses propres donnees.
+variables:
+  referentielUrl: http://localhost:8081
+  planningUrl: http://localhost:8082
+  presencesUrl: http://localhost:8083
+  runId: ""
+  tentatives: ""
+  classeId: ""
+  enseignantId: ""
+  coursIdempotencyKey: ""
+  coursId: ""

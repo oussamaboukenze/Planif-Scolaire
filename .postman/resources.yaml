@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: cff7609b-cf1a-4705-8657-e8371fae362d
+
+cloudResources:
+  collections:
+    ../postman/collections/Planif-Scolaire v1.0: ce24cc55-3360-40de-a00a-29feefeec974
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{planningUrl}}/api/cours"
+method: POST
+headers:
+  Content-Type: application/json
+  idempotencyKey: "{{$guid}}"
+body:
+  type: json
+  content: '{"classeId": {{classeId}}, "enseignantId": {{enseignantId}}, "matiere": "Maths", "dateHeure": "2026-11-02T09:00:00", "salle": "Salle {{runId}}"}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 409", () => pm.response.to.have.status(409));
+      pm.test("Erreur explicite", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(409); pm.expect(e.detail).to.be.a("string").and.not.empty; });
+    language: text/javascript
+order: 14000

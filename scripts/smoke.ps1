@@ -5,7 +5,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 function Post-Json($Uri, $Body) {
-    Invoke-RestMethod -Uri $Uri -Method Post -ContentType 'application/json; charset=utf-8' -Body ([System.Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json)))
+    $headers = @{}
+    if ($Uri.EndsWith("/api/cours")) { $headers["idempotencyKey"] = [guid]::NewGuid().ToString() }
+    Invoke-RestMethod -Headers $headers -Uri $Uri -Method Post -ContentType 'application/json; charset=utf-8' -Body ([System.Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json)))
 }
 function Wait-Result([scriptblock]$Read, [scriptblock]$Condition) {
     $deadline = (Get-Date).AddSeconds(45)

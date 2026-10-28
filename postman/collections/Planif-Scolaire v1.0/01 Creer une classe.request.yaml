@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{referentielUrl}}/api/classes"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"nom": "Classe {{runId}}", "niveau": "6e", "effectifMax": 30}'
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.collectionVariables.set("runId", Date.now().toString());
+      pm.collectionVariables.set("tentatives", 0);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      pm.test("Ressource creee", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header("Location"); });
+      pm.collectionVariables.set("classeId", pm.response.json().id);
+    language: text/javascript
+order: 1000

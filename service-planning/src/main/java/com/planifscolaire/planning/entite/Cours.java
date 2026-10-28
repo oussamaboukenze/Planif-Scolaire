@@ -34,6 +34,17 @@ public class Cours {
     @Column(nullable = false)
     private int nbAbsencesSignalees;
 
+    @Column(unique = true, nullable = false, length = 255)
+    private String idempotencyKey;
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
     public Cours() {}
 
     public Long getId() {

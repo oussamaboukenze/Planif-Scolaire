@@ -25,13 +25,32 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FeignException.class)
     ResponseEntity<ProblemDetail> remote(FeignException e) {
+        if (e.status() == 404) {
+            return error(
+                    HttpStatus.NOT_FOUND,
+                    "Ressource externe introuvable");
+        }
+
+        if (e.status() == -1) {
+            return error(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Échec de communication avec un service");
+        }
+
+        if (e.status() == 503) {
+            return error(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Service ou instance indisponible");
+        }
+
         return error(
-                e.status() == 404
-                        ? HttpStatus.UNPROCESSABLE_ENTITY
-                        : HttpStatus.SERVICE_UNAVAILABLE,
-                e.status() == 404
-                        ? "La ressource distante demandée n'existe pas"
-                        : "Service distant indisponible, réessayez plus tard");
+                HttpStatus.BAD_GATEWAY,
+                "Erreur HTTP du service distant : " + e.status());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ProblemDetail> refus(IllegalArgumentException e) {
+        return error(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

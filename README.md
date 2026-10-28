@@ -108,7 +108,7 @@ flowchart TB
     Presences --> Planning
 ```
 
-Les API sont accessibles directement sur le port de chaque service. Les URL des services appelés sont configurables avec `REFERENTIEL_URL` (par défaut `http://localhost:8081`) et `PLANNING_URL` (par défaut `http://localhost:8082`).
+Les API sont accessibles directement sur le port de chaque service. Le planning appelle le référentiel par découverte Eureka (`service-referentiel`). Les présences appellent le planning via `PLANNING_URL` (par défaut `http://localhost:8082`). Pour un test sans Eureka, le référentiel peut être ciblé avec `spring.cloud.openfeign.client.config.service-referentiel.url`.
 
 ## Services métier
 
@@ -144,7 +144,7 @@ Chaque service est également lançable depuis son propre dossier :
 .\mvnw.cmd spring-boot:run
 ```
 
-Les applications s'exécutent dans des processus séparés. Les opérations de planification utilisent le référentiel et les opérations de présence utilisent le planning. Les appels utilisent les URL configurées. Kafka crée les feuilles d'appel à partir des cours planifiés ; attendre leur disponibilité avant la saisie des absences. Le cours doit être `REALISE` pour accepter une absence.
+Les applications s'exécutent dans des processus séparés. Les opérations de planification utilisent le référentiel et les opérations de présence utilisent le planning. Le planning utilise Eureka pour joindre le référentiel ; les présences utilisent l’URL du planning configurée. Kafka crée les feuilles d'appel à partir des cours planifiés ; attendre leur disponibilité avant la saisie des absences. Le cours doit être `REALISE` pour accepter une absence.
 
 ## API REST
 
@@ -155,18 +155,19 @@ Les applications s'exécutent dans des processus séparés. Les opérations de p
 | Référentiel | `GET /api/enseignants`, `GET /api/enseignants/{id}` | Liste ou détail des enseignants |
 | Référentiel | `POST /api/enseignants`, `PUT /api/enseignants/{id}` | Création ou modification |
 | Planning | `GET /api/cours`, `GET /api/cours/{id}` | Liste ou détail des cours |
-| Planning | `POST /api/cours` | Création d'une séance |
+| Planning | `POST /api/cours` | Création d'une séance avec en-tête `idempotencyKey` obligatoire |
+| Planning | `GET /api/cours/{id}/detail` | Cours enrichi avec la classe et l’enseignant |
 | Planning | `PATCH /api/cours/{id}/statut` | Passage à `REALISE` ou `ANNULE` |
 | Présences | `GET /api/appels`, `GET /api/appels/{id}` | Liste ou détail des appels |
 | Présences | `GET /api/appels/cours/{coursId}` | Appel d'un cours |
 | Présences | `GET /api/appels/{id}/absences` | Absences d'un appel |
 | Présences | `POST /api/appels/{id}/absences` | Saisie d'une absence |
 
-Les réponses utilisent `200` pour une lecture ou une modification, `201` avec un en-tête `Location` pour une création, `400` pour un DTO invalide, `404` pour une ressource introuvable, `409` pour un conflit métier, `422` pour une référence distante inexistante et `503` pour un service distant indisponible. Les erreurs métier et de validation contiennent notamment `status`, `title` et `detail`.
+Les réponses utilisent `200` pour une lecture ou une modification, `201` avec un en-tête `Location` pour une création, `400` pour un DTO invalide, `404` pour une ressource introuvable, `409` pour un conflit métier, `404` pour une référence distante inexistante dans le planning (`422` dans les présences), `503` pour un service distant indisponible et `502` pour les autres erreurs HTTP distantes du planning. Les erreurs métier et de validation contiennent notamment `status`, `title` et `detail`.
 
 ## Tests Postman
 
-Importer [la collection Postman](postman/Planif-Scolaire.postman_collection.json), puis lancer ses **22 requêtes dans l'ordre** avec le Collection Runner, une itération et un délai de **1000 ms** entre les requêtes. Les variables `referentielUrl`, `planningUrl` et `presencesUrl` ciblent les ports 8081, 8082 et 8083.
+Importer [la collection Postman](postman/Planif-Scolaire.postman_collection.json), puis lancer ses **24 requêtes dans l'ordre** avec le Collection Runner, une itération et un délai de **1000 ms** entre les requêtes. Les variables `referentielUrl`, `planningUrl` et `presencesUrl` ciblent les ports 8081, 8082 et 8083.
 
 La collection crée ses données et conserve les identifiants automatiquement. Elle vérifie les créations et lectures, une modification, les erreurs de validation `400`, les ressources inexistantes `404` dans chaque service et les conflits `409`. Elle attend la création asynchrone de l'appel, avec au maximum 30 nouvelles tentatives. Les données de test sont conservées dans les bases ; chaque exécution utilise de nouveaux noms et une nouvelle salle.
 
@@ -190,3 +191,19 @@ Les tests couvrent les règles métier, les validations HTTP, les ressources ine
 ## Livraison
 
 Le tag Git `v1.0` identifie le jalon des services métier. Le commit initial de conception reste dans l'historique.
+
+## TP4 — OpenFeign
+
+`POST /api/cours` exige un en-tête `idempotencyKey` non vide, de 255 caractères maximum.
+Une clé réutilisée retourne `400` avant tout appel distant. Une création concurrente rejetée
+par la contrainte unique retourne `409`. Utiliser une nouvelle clé pour une nouvelle opération,
+même après l’annulation d’un cours. Postman et le script smoke génèrent une clé par création.
+
+`GET /api/cours/{id}/detail` retourne les champs locaux du cours ainsi que `classe` et
+`enseignant`, récupérés dans le référentiel. Les données locales ne sont pas recalculées.
+Les routes Gateway conservent le préfixe `/api`, sans préfixe de service.
+
+Pour une base H2 créée avant ce TP, arrêter le planning, sauvegarder son fichier `.mv.db`,
+puis exécuter `scripts/migrate-planning-tp4.sql` sur cette base avant de redémarrer.
+Cette migration attribue une clé aux anciens cours sans supprimer les données.
+Une base neuve reçoit directement le schéma complet par Hibernate.

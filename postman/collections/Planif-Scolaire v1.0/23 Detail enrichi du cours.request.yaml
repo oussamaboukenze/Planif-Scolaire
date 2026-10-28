@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{planningUrl}}/api/cours/{{coursId}}/detail"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      pm.test("References enrichies", () => { const d = pm.response.json(); pm.expect(d.classe.id).to.eql(Number(pm.collectionVariables.get("classeId"))); pm.expect(d.enseignant.id).to.eql(Number(pm.collectionVariables.get("enseignantId"))); pm.expect(d).not.to.have.property("idempotencyKey"); });
+    language: text/javascript
+order: 23000

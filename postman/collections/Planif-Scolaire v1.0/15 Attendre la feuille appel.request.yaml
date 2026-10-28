@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{presencesUrl}}/api/appels/cours/{{coursId}}"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      const n = Number(pm.collectionVariables.get("tentatives") || 0);
+      if (pm.response.code === 404 && n < 30) {
+        pm.collectionVariables.set("tentatives", n + 1);
+        pm.execution.setNextRequest(pm.info.requestName);
+      } else {
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      pm.collectionVariables.set("appelId", pm.response.json().id);
+      pm.test("Appel du cours", () => pm.expect(String(pm.response.json().coursId)).to.eql(String(pm.collectionVariables.get("coursId"))));
+        pm.collectionVariables.set("tentatives", 0);
+      }
+    language: text/javascript
+order: 15000

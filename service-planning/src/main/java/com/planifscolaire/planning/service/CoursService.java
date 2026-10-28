@@ -2,6 +2,7 @@ package com.planifscolaire.planning.service;
 
 import com.planifscolaire.planning.client.ReferentielClient;
 import com.planifscolaire.planning.dto.CreateCoursDto;
+import com.planifscolaire.planning.dto.CoursDtoFull;
 import com.planifscolaire.planning.dto.EnseignantDto;
 import com.planifscolaire.planning.entite.Cours;
 import com.planifscolaire.planning.entite.ProcessedEvent;
@@ -13,6 +14,7 @@ import com.planifscolaire.planning.event.Events;
 import com.planifscolaire.planning.exception.ConflitMetierException;
 import com.planifscolaire.planning.exception.RessourceIntrouvableException;
 import com.planifscolaire.planning.mapper.CoursMapper;
+import com.planifscolaire.planning.mapper.CoursFullMapper;
 import com.planifscolaire.planning.repository.CoursRepository;
 import com.planifscolaire.planning.repository.OperationLocks;
 import com.planifscolaire.planning.repository.ProcessedEvents;
@@ -31,6 +33,7 @@ public class CoursService {
     private final EventOutbox outbox;
     private final ProcessedEvents processed;
     private final CoursMapper mapper;
+    private final CoursFullMapper fullMapper;
 
     public CoursService(
             CoursRepository repository,
@@ -38,13 +41,15 @@ public class CoursService {
             OperationLocks locks,
             EventOutbox outbox,
             ProcessedEvents processed,
-            CoursMapper mapper) {
+            CoursMapper mapper,
+            CoursFullMapper fullMapper) {
         this.repository = repository;
         this.referentiel = referentiel;
         this.locks = locks;
         this.outbox = outbox;
         this.processed = processed;
         this.mapper = mapper;
+        this.fullMapper = fullMapper;
     }
 
     public List<Cours> getAll(Long classeId) {
@@ -59,8 +64,26 @@ public class CoursService {
                 .orElseThrow(() -> new RessourceIntrouvableException("Cours introuvable"));
     }
 
+    @Transactional(readOnly = true)
+    public CoursDtoFull getDetail(Long id) {
+        Cours cours = get(id);
+        CoursDtoFull detail = fullMapper.toDto(cours);
+        detail.setClasse(referentiel.classe(cours.getClasseId()));
+        detail.setEnseignant(referentiel.enseignant(cours.getEnseignantId()));
+        return detail;
+    }
+
     @Transactional
-    public Cours create(CreateCoursDto request) {
+    public Cours create(CreateCoursDto request, String idempotencyKey) {
+        if (idempotencyKey == null
+                || idempotencyKey.isBlank()
+                || idempotencyKey.length() > 255) {
+            throw new IllegalArgumentException("Clé d'idempotence invalide");
+        }
+
+        if (repository.findByIdempotencyKey(idempotencyKey).isPresent()) {
+            throw new IllegalArgumentException("Opération déjà traitée");
+        }
         referentiel.classe(request.getClasseId());
         EnseignantDto enseignant = referentiel.enseignant(request.getEnseignantId());
         if (!enseignant.getMatiere().equalsIgnoreCase(request.getMatiere().strip())) {
@@ -79,6 +102,7 @@ public class CoursService {
                     "Enseignant, classe ou salle déjà occupé sur ce créneau");
         }
         Cours cours = mapper.toEntity(request);
+        cours.setIdempotencyKey(idempotencyKey);
         cours.setMatiere(request.getMatiere().strip());
         cours.setSalle(request.getSalle().strip());
         repository.save(cours);

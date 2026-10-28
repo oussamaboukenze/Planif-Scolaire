@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{referentielUrl}}/api/enseignants"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"nom": "Enseignant {{runId}}", "matiere": "Maths", "chargeMaxHeures": 20}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      pm.test("Ressource creee", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header("Location"); });
+      pm.collectionVariables.set("enseignantId", pm.response.json().id);
+    language: text/javascript
+order: 6000

@@ -308,6 +308,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "idempotencyKey",
+            "value": "{{coursIdempotencyKey}}",
+            "type": "text"
           }
         ],
         "url": "{{planningUrl}}/api/cours",
@@ -331,6 +336,15 @@
               "pm.test(\"Ressource creee\", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header(\"Location\"); });",
               "pm.collectionVariables.set(\"coursId\", pm.response.json().id);",
               "pm.test(\"Cours planifie\", () => pm.expect(pm.response.json().statut).to.eql(\"PLANIFIE\"));"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"coursIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
             ]
           }
         }
@@ -368,6 +382,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "idempotencyKey",
+            "value": "{{$guid}}",
+            "type": "text"
           }
         ],
         "url": "{{planningUrl}}/api/cours",
@@ -427,6 +446,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "idempotencyKey",
+            "value": "{{$guid}}",
+            "type": "text"
           }
         ],
         "url": "{{planningUrl}}/api/cours",
@@ -701,6 +725,64 @@
             "exec": [
               "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
               "pm.test(\"Erreur explicite\", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(404); pm.expect(e.detail).to.be.a(\"string\").and.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "23 Detail enrichi du cours",
+      "request": {
+        "method": "GET",
+        "url": "{{planningUrl}}/api/cours/{{coursId}}/detail"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"References enrichies\", () => { const d = pm.response.json(); pm.expect(d.classe.id).to.eql(Number(pm.collectionVariables.get(\"classeId\"))); pm.expect(d.enseignant.id).to.eql(Number(pm.collectionVariables.get(\"enseignantId\"))); pm.expect(d).not.to.have.property(\"idempotencyKey\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "24 Cle de creation deja utilisee",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "idempotencyKey",
+            "value": "{{coursIdempotencyKey}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{planningUrl}}/api/cours",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"classeId\": {{classeId}}, \"enseignantId\": {{enseignantId}}, \"matiere\": \"Maths\", \"dateHeure\": \"2026-11-02T09:00:00\", \"salle\": \"Salle {{runId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Operation deja traitee\", () => pm.expect(pm.response.json().detail).to.eql(\"Opération déjà traitée\"));"
             ]
           }
         }

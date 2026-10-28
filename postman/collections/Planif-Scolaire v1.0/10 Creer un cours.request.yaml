@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{planningUrl}}/api/cours"
+method: POST
+headers:
+  Content-Type: application/json
+  idempotencyKey: "{{coursIdempotencyKey}}"
+body:
+  type: json
+  content: '{"classeId": {{classeId}}, "enseignantId": {{enseignantId}}, "matiere": "Maths", "dateHeure": "2026-11-02T09:00:00", "salle": "Salle {{runId}}"}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      pm.test("Ressource creee", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header("Location"); });
+      pm.collectionVariables.set("coursId", pm.response.json().id);
+      pm.test("Cours planifie", () => pm.expect(pm.response.json().statut).to.eql("PLANIFIE"));
+    language: text/javascript
+  - type: beforeRequest
+    code: pm.collectionVariables.set("coursIdempotencyKey", pm.variables.replaceIn("{{$guid}}"));
+    language: text/javascript
+order: 10000

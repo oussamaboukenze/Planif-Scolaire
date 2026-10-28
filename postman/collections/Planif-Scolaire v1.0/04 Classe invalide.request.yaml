@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{referentielUrl}}/api/classes"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"nom": "", "niveau": "", "effectifMax": 0}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 400", () => pm.response.to.have.status(400));
+      pm.test("Erreur explicite", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(400); pm.expect(e.detail).to.be.a("string").and.not.empty; });
+    language: text/javascript
+order: 4000

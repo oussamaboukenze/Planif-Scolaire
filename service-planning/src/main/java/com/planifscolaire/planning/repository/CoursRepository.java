@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface CoursRepository extends JpaRepository<Cours, Long> {
     @Query(
@@ -15,4 +16,6 @@ public interface CoursRepository extends JpaRepository<Cours, Long> {
     List<Cours> conflicts(LocalDateTime date, Long enseignant, Long classe, String salle);
 
     List<Cours> findByClasseIdOrderByDateHeureAsc(Long classeId);
+
+    Optional<Cours> findByIdempotencyKey(String idempotencyKey);
 }

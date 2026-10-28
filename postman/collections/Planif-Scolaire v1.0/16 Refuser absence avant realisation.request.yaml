@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{presencesUrl}}/api/appels/{{appelId}}/absences"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"etudiantNom": "Sara {{runId}}", "motif": "Maladie", "justifiee": true}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 409", () => pm.response.to.have.status(409));
+      pm.test("Erreur explicite", () => { const e = pm.response.json(); pm.expect(e.status).to.eql(409); pm.expect(e.detail).to.be.a("string").and.not.empty; });
+    language: text/javascript
+order: 16000

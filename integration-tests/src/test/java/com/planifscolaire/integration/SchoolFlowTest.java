@@ -74,6 +74,9 @@ class SchoolFlowTest {
                 HttpRequest.newBuilder(URI.create(url))
                         .timeout(Duration.ofSeconds(10))
                         .header("Content-Type", "application/json");
+        if (method.equals("POST") && URI.create(url).getPath().equals("/api/cours")) {
+            builder.header("idempotencyKey", UUID.randomUUID().toString());
+        }
         var response =
                 http.send(
                         builder.method(
@@ -96,7 +99,7 @@ class SchoolFlowTest {
                         start(
                                 PlanningApplication.class,
                                 "service-planning",
-                                "--app.referentiel-url=" + url(reference));
+                                "--spring.cloud.openfeign.client.config.service-referentiel.url=" + url(reference));
                 var presences =
                         start(
                                 PresencesApplication.class,
@@ -147,9 +150,14 @@ class SchoolFlowTest {
                     "POST",
                     p + "/api/cours",
                     body.replace("\"classeId\":" + classe, "\"classeId\":999999"),
-                    422);
+                    404);
             long cours = request("POST", p + "/api/cours", body, 201).path("id").asLong();
             request("POST", p + "/api/cours", body, 409);
+            var detail = request("GET", p + "/api/cours/" + cours + "/detail", null, 200);
+            assertThat(detail.path("classe").path("nom").asText()).isEqualTo("6A");
+            assertThat(detail.path("enseignant").path("nom").asText()).isEqualTo("Ali");
+            assertThat(detail.path("matiere").asText()).isEqualTo("Maths");
+            assertThat(detail.has("idempotencyKey")).isFalse();
             await().atMost(Duration.ofSeconds(30))
                     .untilAsserted(
                             () -> request("GET", a + "/api/appels/cours/" + cours, null, 200));

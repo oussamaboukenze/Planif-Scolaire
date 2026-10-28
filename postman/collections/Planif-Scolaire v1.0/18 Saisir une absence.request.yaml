@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{presencesUrl}}/api/appels/{{appelId}}/absences"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"etudiantNom": "Sara {{runId}}", "motif": "Maladie", "justifiee": true}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      pm.test("Ressource creee", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header("Location"); });
+    language: text/javascript
+order: 18000

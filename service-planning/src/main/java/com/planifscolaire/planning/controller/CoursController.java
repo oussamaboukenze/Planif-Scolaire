@@ -1,6 +1,7 @@
 package com.planifscolaire.planning.controller;
 
 import com.planifscolaire.planning.dto.CoursDto;
+import com.planifscolaire.planning.dto.CoursDtoFull;
 import com.planifscolaire.planning.dto.CreateCoursDto;
 import com.planifscolaire.planning.dto.StatutCoursDto;
 import com.planifscolaire.planning.entite.Cours;
@@ -36,16 +37,25 @@ public class CoursController {
         return ResponseEntity.ok(mapper.toDto(service.get(id)));
     }
 
-    @PostMapping
-    public ResponseEntity<CoursDto> create(@Valid @RequestBody CreateCoursDto request) {
-        Cours cours = service.create(request);
-        return ResponseEntity.created(URI.create("/api/cours/" + cours.getId()))
-                .body(mapper.toDto(cours));
-    }
-
     @PatchMapping("/{id}/statut")
     public ResponseEntity<CoursDto> transition(
             @PathVariable Long id, @Valid @RequestBody StatutCoursDto request) {
         return ResponseEntity.ok(mapper.toDto(service.transition(id, request.getStatut())));
+    }
+
+    @PostMapping
+    public ResponseEntity<CoursDto> create(
+            @Valid @RequestBody CreateCoursDto request,
+            @RequestHeader(name = "idempotencyKey") String idempotencyKey) {
+
+        Cours cours = service.create(request, idempotencyKey);
+
+        return ResponseEntity.created(URI.create("/api/cours/" + cours.getId()))
+                .body(mapper.toDto(cours));
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<CoursDtoFull> getDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getDetail(id));
     }
 }
