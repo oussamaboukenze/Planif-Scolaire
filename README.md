@@ -87,13 +87,15 @@ Les groupes `Referentiel`, `Planning` et `Presences` correspondent aux trois ser
 
 Un cours appartient à une seule classe et mobilise un seul enseignant. Une classe ou un enseignant peut être associé à plusieurs cours. Une séance possède au maximum une feuille d'appel, créée après la planification. Chaque absence appartient à un seul appel.
 
-## Architecture de la version 1.0
+## Architecture déployée
 
 | Application | Port | Rôle |
 | --- | --- | --- |
 | `service-referentiel` | 8081 | Classes et enseignants |
 | `service-planning` | 8082 | Séances de cours et suivi des absences |
 | `service-presences` | 8083 | Feuilles d'appel et absences |
+| `notification-service` | 8084 | Notifications email consommées depuis Kafka |
+| `gateway-service` | 8080 | Routage API et limitation de débit |
 
 ```mermaid
 flowchart TB
@@ -101,11 +103,22 @@ flowchart TB
     Referentiel["service-referentiel<br/>8081"]
     Planning["service-planning<br/>8082"]
     Presences["service-presences<br/>8083"]
+    Notifications["notification-service<br/>8084"]
+    Gateway["gateway-service<br/>8080"]
+    Kafka[("Kafka")]
     Client --> Referentiel
     Client --> Planning
     Client --> Presences
+    Client --> Gateway
+    Gateway --> Referentiel
+    Gateway --> Planning
+    Gateway --> Presences
+    Gateway --> Notifications
     Planning --> Referentiel
     Presences --> Planning
+    Planning --> Kafka
+    Presences --> Kafka
+    Kafka --> Notifications
 ```
 
 Les API sont accessibles directement sur le port de chaque service. Le planning appelle le référentiel par découverte Eureka (`service-referentiel`). Les présences appellent le planning via `PLANNING_URL` (par défaut `http://localhost:8082`). Pour un test sans Eureka, le référentiel peut être ciblé avec `spring.cloud.openfeign.client.config.service-referentiel.url`.
@@ -121,22 +134,23 @@ Les contrôleurs exposent les API et valident les DTO avec `@Valid`. Les service
 | service-referentiel | Classes, enseignants | `./data/service-referentiel` |
 | service-planning | Cours | `./data/service-planning` |
 | service-presences | Appels, absences | `./data/service-presences` |
+| notification-service | Suivi des emails envoyés | `./data/notification-service` |
 
 Chaque service possède sa base H2 ; les références entre services utilisent des identifiants. Les chemins des bases sont relatifs au dossier de lancement. Les données ne sont pas déposées sur Git.
 
 ## Lancement dans IntelliJ IDEA
 
-Prérequis : JDK 17 et Docker Compose pour Kafka. Les modules utilisent Spring Boot 3.5.6, Spring Cloud 2025.0.0 et MapStruct 1.6.3.
+Prérequis : JDK 17 et Docker Compose. Compose démarre Kafka, Redis (limitation de débit) et Mailpit (SMTP local). Les modules utilisent Spring Boot 3.5.6, Spring Cloud 2025.0.0 et MapStruct 1.6.3.
 
 1. Ouvrir le `pom.xml` racine comme projet Maven, puis recharger les projets Maven.
 2. Choisir le JDK 17 dans Project SDK et dans le runner Maven.
-3. Démarrer Kafka depuis la racine : `docker compose up -d`.
+3. Depuis la racine, démarrer Kafka, Redis et Mailpit : `docker compose up -d`.
 4. Démarrer `ConfigServerApplication` (port 8888), puis `ServiceRegistryApplication` (port 8761).
-5. Exécuter `ServiceReferentielApplication`, `PlanningApplication` et `PresencesApplication` dans des configurations distinctes, puis `GatewayServiceApplication` (port 8080).
+5. Exécuter `ServiceReferentielApplication`, `PlanningApplication`, `PresencesApplication` et `NotificationApplication` dans des configurations distinctes, puis `GatewayServiceApplication` (port 8080).
 
 Le serveur de configuration lit par défaut les fichiers locaux de `config-repo`. Son dossier de travail doit être la racine du projet ou le dossier `config-server`. Pour un autre dossier, définir `CONFIG_REPO_LOCATION=file:/chemin/absolu/config-repo/`. Le profil Git reste disponible avec `CONFIG_SERVER_PROFILE=git`. Les clients peuvent cibler un autre serveur avec `CONFIG_SERVER_URL`.
 
-Sur macOS ou Linux, utiliser `./mvnw spring-boot:run` depuis le dossier du service. Kafka doit être disponible avant le planning et les présences ; Docker Desktop doit être démarré avant `docker compose up -d`.
+Sur macOS ou Linux, utiliser `./mvnw spring-boot:run` depuis le dossier du service. Kafka doit être disponible avant le planning, les présences et les notifications ; Redis doit être disponible avant le Gateway. Docker Desktop doit être démarré avant `docker compose up -d`.
 
 Chaque service est également lançable depuis son propre dossier :
 
@@ -162,14 +176,20 @@ Les applications s'exécutent dans des processus séparés. Les opérations de p
 | Présences | `GET /api/appels/cours/{coursId}` | Appel d'un cours |
 | Présences | `GET /api/appels/{id}/absences` | Absences d'un appel |
 | Présences | `POST /api/appels/{id}/absences` | Saisie d'une absence |
+| Notifications | `GET /api/notifications/cours/{coursId}` | Statuts des emails liés à un cours |
+| Notifications | `GET /api/notifications/{eventId}` | Statut d'un email par événement |
 
 Les réponses utilisent `200` pour une lecture ou une modification, `201` avec un en-tête `Location` pour une création, `400` pour un DTO invalide, `404` pour une ressource introuvable, `409` pour un conflit métier, `404` pour une référence distante inexistante dans le planning (`422` dans les présences), `503` pour un service distant indisponible et `502` pour les autres erreurs HTTP distantes du planning. Les erreurs métier et de validation contiennent notamment `status`, `title` et `detail`.
 
 ## Tests Postman
 
-Importer [la collection Postman](postman/Planif-Scolaire.postman_collection.json), puis lancer ses **24 requêtes dans l'ordre** avec le Collection Runner, une itération et un délai de **1000 ms** entre les requêtes. Les variables `referentielUrl`, `planningUrl` et `presencesUrl` ciblent les ports 8081, 8082 et 8083.
+Importer [la collection Postman](postman/Planif-Scolaire.postman_collection.json), puis lancer ses **26 requêtes dans l'ordre** avec le Collection Runner, une itération et un délai de **1000 ms** entre les requêtes. Les variables `referentielUrl`, `planningUrl`, `presencesUrl`, `notificationUrl` et `gatewayUrl` ciblent les ports 8081 à 8084 et 8080.
 
-La collection crée ses données et conserve les identifiants automatiquement. Elle vérifie les créations et lectures, une modification, les erreurs de validation `400`, les ressources inexistantes `404` dans chaque service et les conflits `409`. Elle attend la création asynchrone de l'appel, avec au maximum 30 nouvelles tentatives. Les données de test sont conservées dans les bases ; chaque exécution utilise de nouveaux noms et une nouvelle salle.
+La collection crée ses données et conserve les identifiants automatiquement. Elle vérifie les créations et lectures, une modification, les erreurs de validation `400`, les ressources inexistantes `404` dans chaque service et les conflits `409`. Elle attend la création asynchrone de l'appel, avec au maximum 30 nouvelles tentatives. Les deux derniers scénarios vérifient le statut `SENT` de l'email et la réponse `429` du Gateway après un burst de requêtes. Les données de test sont conservées dans les bases ; chaque exécution utilise de nouveaux noms et une nouvelle salle.
+
+Le Gateway limite chaque client à 5 requêtes par seconde avec un burst maximal de 10. Envoyer un en-tête `X-Client-Id` stable pour appliquer le quota par client ; sans cet en-tête, l'adresse IP est utilisée. Le scénario Postman de burst génère une clé unique pour ne pas partager le quota avec les autres exécutions.
+
+Les emails locaux sont visibles dans Mailpit : interface http://localhost:8025, SMTP sur le port 1025. Le destinataire de démonstration par défaut est `demo@planifscolaire.local`; il peut être remplacé par `NOTIFICATION_RECIPIENT`.
 
 | Domaine | Cas valide | Validation | Ressource inexistante |
 | --- | --- | --- | --- |
@@ -186,7 +206,7 @@ Depuis la racine :
 .\mvnw.cmd clean verify
 ```
 
-Les tests couvrent les règles métier, les validations HTTP, les ressources inexistantes et le parcours cours–appel–absence. Le test de parcours utilise des bases en mémoire et Kafka embarqué, sans Docker. Le module `integration-tests` est un module de tests, pas une application métier supplémentaire.
+Les tests couvrent les règles métier, les validations HTTP, les ressources inexistantes et le parcours cours–appel–absence. Le test de parcours utilise des bases en mémoire et Kafka embarqué, sans Docker. Les tests de `notification-service` vérifient l'envoi, l'idempotence d'événement et la persistance d'un échec SMTP. Le module `integration-tests` est un module de tests, pas une application métier supplémentaire.
 
 ## Livraison
 
@@ -207,3 +227,15 @@ Pour une base H2 créée avant ce TP, arrêter le planning, sauvegarder son fich
 puis exécuter `scripts/migrate-planning-tp4.sql` sur cette base avant de redémarrer.
 Cette migration attribue une clé aux anciens cours sans supprimer les données.
 Une base neuve reçoit directement le schéma complet par Hibernate.
+
+## V5 — Notifications asynchrones
+
+`notification-service` est une application indépendante : elle possède sa propre base H2, son groupe Kafka `notification-service`, sa configuration externalisée et son enregistrement Eureka. Elle consomme `course-scheduled`, `course-cancelled` et `absence-recorded`, puis envoie un email via SMTP. Chaque `eventId` sert de clé unique en base afin d'ignorer un événement déjà envoyé. Le statut `PENDING`, `SENT` ou `FAILED` est consultable via l'API Notifications. Après trois nouvelles tentatives espacées d'une seconde, Kafka publie l'événement en échec dans le topic `<topic>.DLT`.
+
+En local, Mailpit remplace un serveur email réel. Le destinataire de démonstration est configurable avec `NOTIFICATION_RECIPIENT`; il ne s'agit pas d'une adresse d'enseignant issue du référentiel.
+
+## V6 — Résilience et limitation de débit
+
+Planning protège ses lectures Feign du référentiel (classe et enseignant), et présences protège sa lecture Feign du planning (cours), par Retry et Circuit Breaker. Trois tentatives au maximum sont espacées de 250 ms. Les erreurs réseau et HTTP 5xx sont éligibles ; les réponses 4xx, notamment 404, ne sont pas répétées. Après ouverture du circuit, le fallback renvoie un `503` au format `ProblemDetail` déjà utilisé.
+
+Le Gateway utilise `RequestRateLimiter` et Redis : 5 jetons par seconde, burst de 10. Le quota est indexé par `X-Client-Id`, ou par adresse IP si l'en-tête est absent. Une requête refusée reçoit `429`. Les erreurs centralisées et l'idempotence de `POST /api/cours` existaient déjà ; elles restent couvertes par la collection Postman.

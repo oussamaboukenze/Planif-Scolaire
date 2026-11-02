@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Planif-Scolaire v1.0",
+    "name": "Planif-Scolaire V5-V6",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Executer toute la collection dans le Runner avec un delai de 1000 ms. Les trois services et Kafka doivent etre demarres. Chaque execution cree ses propres donnees."
+    "description": "Executer les 26 requetes dans l'ordre avec un delai de 1000 ms. Les services, Kafka, Redis et Mailpit doivent etre demarres. Chaque execution cree ses propres donnees."
   },
   "variable": [
     {
@@ -16,6 +16,14 @@
     {
       "key": "presencesUrl",
       "value": "http://localhost:8083"
+    },
+    {
+      "key": "notificationUrl",
+      "value": "http://localhost:8084"
+    },
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8080"
     }
   ],
   "item": [
@@ -783,6 +791,68 @@
             "exec": [
               "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
               "pm.test(\"Operation deja traitee\", () => pm.expect(pm.response.json().detail).to.eql(\"Opération déjà traitée\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "25 Notification email envoyee",
+      "request": {
+        "method": "GET",
+        "url": "{{notificationUrl}}/api/notifications/cours/{{coursId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Email du cours confirme\", () => { const items = pm.response.json(); const sent = items.find(item => item.eventType === \"COURSE_SCHEDULED\" && item.status === \"SENT\"); pm.expect(sent, \"notification SENT attendue\").to.exist; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "26 Gateway rate limit retourne 429",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Client-Id",
+            "value": "{{rateLimitClientId}}"
+          }
+        ],
+        "url": "{{gatewayUrl}}/api/classes"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"rateLimitClientId\", \"postman-\" + Date.now().toString());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const endpoint = pm.variables.replaceIn(\"{{gatewayUrl}}/api/classes\");",
+              "const clientId = pm.collectionVariables.get(\"rateLimitClientId\");",
+              "const statuses = [];",
+              "let completed = 0;",
+              "for (let index = 0; index < 12; index++) {",
+              "  pm.sendRequest({ url: endpoint, header: { \"X-Client-Id\": clientId } }, (error, response) => {",
+              "    statuses.push(error ? 0 : response.code);",
+              "    completed++;",
+              "    if (completed === 12) { pm.test(\"Token bucket refuse le burst\", () => pm.expect(statuses).to.include(429)); }",
+              "  });",
+              "}"
             ]
           }
         }

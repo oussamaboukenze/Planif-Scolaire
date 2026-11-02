@@ -1,6 +1,5 @@
 package com.planifscolaire.planning.service;
 
-import com.planifscolaire.planning.client.ReferentielClient;
 import com.planifscolaire.planning.dto.CreateCoursDto;
 import com.planifscolaire.planning.dto.CoursDtoFull;
 import com.planifscolaire.planning.dto.EnseignantDto;
@@ -18,6 +17,7 @@ import com.planifscolaire.planning.mapper.CoursFullMapper;
 import com.planifscolaire.planning.repository.CoursRepository;
 import com.planifscolaire.planning.repository.OperationLocks;
 import com.planifscolaire.planning.repository.ProcessedEvents;
+import com.planifscolaire.planning.service.ResilientReferentielLookup;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @Service
 public class CoursService {
     private final CoursRepository repository;
-    private final ReferentielClient referentiel;
+    private final ResilientReferentielLookup referentiel;
     private final OperationLocks locks;
     private final EventOutbox outbox;
     private final ProcessedEvents processed;
@@ -37,7 +37,7 @@ public class CoursService {
 
     public CoursService(
             CoursRepository repository,
-            ReferentielClient referentiel,
+            ResilientReferentielLookup referentiel,
             OperationLocks locks,
             EventOutbox outbox,
             ProcessedEvents processed,

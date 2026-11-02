@@ -1,6 +1,5 @@
 package com.planifscolaire.presences.service;
 
-import com.planifscolaire.presences.client.PlanningClient;
 import com.planifscolaire.presences.dto.CreateAbsenceDto;
 import com.planifscolaire.presences.entite.Absence;
 import com.planifscolaire.presences.entite.Appel;
@@ -16,6 +15,7 @@ import com.planifscolaire.presences.repository.AbsenceRepository;
 import com.planifscolaire.presences.repository.AppelRepository;
 import com.planifscolaire.presences.repository.OperationLocks;
 import com.planifscolaire.presences.repository.ProcessedEvents;
+import com.planifscolaire.presences.service.ResilientPlanningLookup;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +27,7 @@ import java.util.UUID;
 public class PresenceService {
     private final AppelRepository appels;
     private final AbsenceRepository absences;
-    private final PlanningClient planning;
+    private final ResilientPlanningLookup planning;
     private final OperationLocks locks;
     private final EventOutbox outbox;
     private final ProcessedEvents processed;
@@ -35,7 +35,7 @@ public class PresenceService {
     public PresenceService(
             AppelRepository appels,
             AbsenceRepository absences,
-            PlanningClient planning,
+            ResilientPlanningLookup planning,
             OperationLocks locks,
             EventOutbox outbox,
             ProcessedEvents processed) {
@@ -59,9 +59,8 @@ public class PresenceService {
     public Appel getByCoursId(Long coursId) {
         return appels.findByCoursId(coursId)
                 .orElseThrow(
-                        () ->
-                                new RessourceIntrouvableException(
-                                        "Appel pas encore disponible pour ce cours"));
+                        () -> new RessourceIntrouvableException(
+                                "Appel pas encore disponible pour ce cours"));
     }
 
     public List<Absence> getAbsences(Long appelId) {
@@ -75,16 +74,15 @@ public class PresenceService {
         if (processed.existsById(event.getEventId())) {
             return;
         }
-        Appel appel =
-                appels.findByCoursId(event.getCoursId())
-                        .orElseGet(
-                                () -> {
-                                    Appel nouveau = new Appel();
-                                    nouveau.setCoursId(event.getCoursId());
-                                    nouveau.setClasseId(event.getClasseId());
-                                    nouveau.setDate(event.getDateHeure().toLocalDate());
-                                    return nouveau;
-                                });
+        Appel appel = appels.findByCoursId(event.getCoursId())
+                .orElseGet(
+                        () -> {
+                            Appel nouveau = new Appel();
+                            nouveau.setCoursId(event.getCoursId());
+                            nouveau.setClasseId(event.getClasseId());
+                            nouveau.setDate(event.getDateHeure().toLocalDate());
+                            return nouveau;
+                        });
         if (cancelled) {
             appel.setStatut(StatutAppel.CLOTURE);
         }
