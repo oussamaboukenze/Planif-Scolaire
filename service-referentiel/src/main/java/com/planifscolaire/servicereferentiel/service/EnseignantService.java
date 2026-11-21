@@ -37,8 +37,14 @@ public class EnseignantService {
         return save(getById(id), values);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        repository.delete(getById(id));
+    }
+
     private Enseignant save(Enseignant entity, Enseignant values) {
         entity.setNom(values.getNom().strip());
+        entity.setEmail(values.getEmail() == null ? null : values.getEmail().strip());
         entity.setMatiere(values.getMatiere().strip());
         entity.setChargeMaxHeures(values.getChargeMaxHeures());
         return repository.save(entity);

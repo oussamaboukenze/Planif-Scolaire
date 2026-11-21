@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{utilisateursUrl}}/api/users/{{etudiantId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      pm.test("Role ETUDIANT", () => pm.expect(pm.response.json().role).to.eql("ETUDIANT"));
+    language: text/javascript
+order: 28000

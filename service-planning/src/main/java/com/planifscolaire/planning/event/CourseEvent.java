@@ -12,7 +12,23 @@ public class CourseEvent {
 
     private LocalDateTime dateHeure;
 
+    private String enseignantEmail;
+
     public CourseEvent() {}
+
+    public CourseEvent(
+            UUID eventId, Long coursId, Long classeId, LocalDateTime dateHeure, String enseignantEmail) {
+        this(eventId, coursId, classeId, dateHeure);
+        this.enseignantEmail = enseignantEmail;
+    }
+
+    public String getEnseignantEmail() {
+        return enseignantEmail;
+    }
+
+    public void setEnseignantEmail(String enseignantEmail) {
+        this.enseignantEmail = enseignantEmail;
+    }
 
     public CourseEvent(UUID eventId, Long coursId, Long classeId, LocalDateTime dateHeure) {
         this.eventId = eventId;

@@ -24,6 +24,10 @@
     {
       "key": "gatewayUrl",
       "value": "http://localhost:8080"
+    },
+    {
+      "key": "utilisateursUrl",
+      "value": "http://localhost:8085"
     }
   ],
   "item": [
@@ -853,6 +857,338 @@
               "    if (completed === 12) { pm.test(\"Token bucket refuse le burst\", () => pm.expect(statuses).to.include(429)); }",
               "  });",
               "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 Creer un etudiant",
+      "request": {
+        "method": "POST",
+        "url": "{{utilisateursUrl}}/api/users",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Sara Etudiante {{runId}}\", \"email\": \"etudiant{{runId}}@emsi.ma\", \"role\": \"ETUDIANT\", \"actif\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Ressource creee\", () => { pm.expect(pm.response.json().id).to.be.above(0); pm.response.to.have.header(\"Location\"); });",
+              "pm.collectionVariables.set(\"etudiantId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "28 Lire l etudiant",
+      "request": {
+        "method": "GET",
+        "url": "{{utilisateursUrl}}/api/users/{{etudiantId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Role ETUDIANT\", () => pm.expect(pm.response.json().role).to.eql(\"ETUDIANT\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "29 Modifier l etudiant",
+      "request": {
+        "method": "PUT",
+        "url": "{{utilisateursUrl}}/api/users/{{etudiantId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Sara Modifiee {{runId}}\", \"email\": \"etudiant{{runId}}@emsi.ma\", \"role\": \"ETUDIANT\", \"actif\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Nom modifie\", () => pm.expect(pm.response.json().nom).to.include(\"Modifiee\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "30 Etudiant invalide",
+      "request": {
+        "method": "POST",
+        "url": "{{utilisateursUrl}}/api/users",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"\", \"email\": \"pas-un-email\", \"role\": \"ETUDIANT\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Erreur explicite\", () => pm.expect(pm.response.json().detail).to.include(\"email\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "31 Etudiant inexistant",
+      "request": {
+        "method": "GET",
+        "url": "{{utilisateursUrl}}/api/users/9223372036854775807"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "32 Absence avec etudiantId",
+      "request": {
+        "method": "POST",
+        "url": "{{presencesUrl}}/api/appels/{{appelId}}/absences",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantId\": {{etudiantId}}, \"motif\": \"Retard\", \"justifiee\": false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.test(\"Etudiant verifie via service-utilisateurs\", () => { const a = pm.response.json(); pm.expect(a.etudiantId).to.eql(Number(pm.collectionVariables.get(\"etudiantId\"))); pm.expect(a.etudiantNom).to.include(\"Sara\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "33 Absence etudiant inexistant",
+      "request": {
+        "method": "POST",
+        "url": "{{presencesUrl}}/api/appels/{{appelId}}/absences",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantId\": 999999999, \"motif\": \"Retard\", \"justifiee\": false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 422 (etudiant distant introuvable)\", () => pm.response.to.have.status(422));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "34 Detail enrichi avec absences",
+      "request": {
+        "method": "GET",
+        "url": "{{planningUrl}}/api/cours/{{coursId}}/detail"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Classe, enseignant et absences\", () => { const d = pm.response.json(); pm.expect(d.classe).to.exist; pm.expect(d.enseignant).to.exist; pm.expect(d.absences).to.be.an(\"array\").that.is.not.empty; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "35 Creer une classe a supprimer",
+      "request": {
+        "method": "POST",
+        "url": "{{referentielUrl}}/api/classes",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Temp {{runId}}\", \"niveau\": \"6e\", \"effectifMax\": 25}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"classeTmpId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "36 Supprimer la classe",
+      "request": {
+        "method": "DELETE",
+        "url": "{{referentielUrl}}/api/classes/{{classeTmpId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "37 Classe supprimee introuvable",
+      "request": {
+        "method": "GET",
+        "url": "{{referentielUrl}}/api/classes/{{classeTmpId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "38 Gateway route statique utilisateurs",
+      "request": {
+        "method": "GET",
+        "url": "{{gatewayUrl}}/api/users"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "39 Gateway route dynamique (discovery locator)",
+      "request": {
+        "method": "GET",
+        "url": "{{gatewayUrl}}/service-referentiel/api/classes"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200 via /service-referentiel/**\", () => pm.response.to.have.status(200));"
             ]
           }
         }

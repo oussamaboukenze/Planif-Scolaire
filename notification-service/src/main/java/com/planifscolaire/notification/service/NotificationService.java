@@ -37,7 +37,11 @@ public class NotificationService {
         String date = event.dateHeure().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         String body = "Cours #" + event.coursId() + " pour la classe #" + event.classeId()
                 + " le " + date + ".";
-        return deliver(event.eventId(), event.coursId(), eventType, subject, body);
+        // V5 : on notifie l'enseignant ; sinon l'adresse par défaut de la configuration
+        String to = event.enseignantEmail() == null || event.enseignantEmail().isBlank()
+                ? recipient
+                : event.enseignantEmail();
+        return deliver(event.eventId(), event.coursId(), eventType, subject, body, to);
     }
 
     public NotificationResponse sendAbsenceNotification(AbsenceEvent event) {
@@ -45,7 +49,7 @@ public class NotificationService {
         String subject = "Planif-Scolaire: absence enregistree";
         String body = "Une absence (#" + event.absenceId() + ") a ete enregistree pour le cours #"
                 + event.coursId() + ".";
-        return deliver(event.eventId(), event.coursId(), eventType, subject, body);
+        return deliver(event.eventId(), event.coursId(), eventType, subject, body, recipient);
     }
 
     public List<NotificationResponse> findByCours(Long coursId) {
@@ -61,9 +65,9 @@ public class NotificationService {
     }
 
     private NotificationResponse deliver(
-            UUID eventId, Long coursId, String eventType, String subject, String body) {
+            UUID eventId, Long coursId, String eventType, String subject, String body, String to) {
         NotificationDelivery delivery = repository.findById(eventId).orElseGet(
-                () -> new NotificationDelivery(eventId, coursId, eventType, recipient, subject));
+                () -> new NotificationDelivery(eventId, coursId, eventType, to, subject));
         if (delivery.getStatus() == NotificationStatus.SENT) {
             return NotificationResponse.from(delivery);
         }
@@ -72,7 +76,7 @@ public class NotificationService {
         repository.saveAndFlush(delivery);
 
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(recipient);
+        message.setTo(to);
         message.setSubject(subject);
         message.setText(body);
         try {

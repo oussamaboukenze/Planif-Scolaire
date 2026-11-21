@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{utilisateursUrl}}/api/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"nom": "", "email": "pas-un-email", "role": "ETUDIANT"}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 400", () => pm.response.to.have.status(400));
+      pm.test("Erreur explicite", () => pm.expect(pm.response.json().detail).to.include("email"));
+    language: text/javascript
+order: 30000

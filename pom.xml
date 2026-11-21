@@ -8,6 +8,7 @@
     <name>Planif-Scolaire</name>
     <modules>
         <module>service-referentiel</module>
+        <module>service-utilisateurs</module>
         <module>service-planning</module>
         <module>service-presences</module>
         <module>notification-service</module>

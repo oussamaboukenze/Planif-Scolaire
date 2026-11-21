@@ -14,6 +14,8 @@ public class Absence {
     @Column(nullable = false)
     private Long appelId;
 
+    private Long etudiantId;
+
     @Column(nullable = false)
     private String etudiantNom;
 
@@ -24,6 +26,14 @@ public class Absence {
     private boolean justifiee;
 
     public Absence() {}
+
+    public Long getEtudiantId() {
+        return etudiantId;
+    }
+
+    public void setEtudiantId(Long etudiantId) {
+        this.etudiantId = etudiantId;
+    }
 
     public Long getId() {
         return id;

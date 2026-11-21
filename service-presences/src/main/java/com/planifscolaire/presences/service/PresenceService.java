@@ -1,6 +1,7 @@
 package com.planifscolaire.presences.service;
 
 import com.planifscolaire.presences.dto.CreateAbsenceDto;
+import com.planifscolaire.presences.dto.UserDto;
 import com.planifscolaire.presences.entite.Absence;
 import com.planifscolaire.presences.entite.Appel;
 import com.planifscolaire.presences.entite.ProcessedEvent;
@@ -9,6 +10,7 @@ import com.planifscolaire.presences.event.AbsenceEvent;
 import com.planifscolaire.presences.event.CourseEvent;
 import com.planifscolaire.presences.event.EventOutbox;
 import com.planifscolaire.presences.event.Events;
+import com.planifscolaire.presences.exception.ApiException;
 import com.planifscolaire.presences.exception.ConflitMetierException;
 import com.planifscolaire.presences.exception.RessourceIntrouvableException;
 import com.planifscolaire.presences.repository.AbsenceRepository;
@@ -17,6 +19,7 @@ import com.planifscolaire.presences.repository.OperationLocks;
 import com.planifscolaire.presences.repository.ProcessedEvents;
 import com.planifscolaire.presences.service.ResilientPlanningLookup;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ public class PresenceService {
     private final OperationLocks locks;
     private final EventOutbox outbox;
     private final ProcessedEvents processed;
+    private final ResilientUtilisateursLookup utilisateurs;
 
     public PresenceService(
             AppelRepository appels,
@@ -38,13 +42,15 @@ public class PresenceService {
             ResilientPlanningLookup planning,
             OperationLocks locks,
             EventOutbox outbox,
-            ProcessedEvents processed) {
+            ProcessedEvents processed,
+            ResilientUtilisateursLookup utilisateurs) {
         this.appels = appels;
         this.absences = absences;
         this.planning = planning;
         this.locks = locks;
         this.outbox = outbox;
         this.processed = processed;
+        this.utilisateurs = utilisateurs;
     }
 
     public List<Appel> getAll() {
@@ -101,13 +107,32 @@ public class PresenceService {
             throw new ConflitMetierException(
                     "Le cours doit être REALISE avant la saisie des absences");
         }
-        String nom = request.getEtudiantNom().strip().replaceAll("\\s+", " ");
+        String nom;
+        Long etudiantId = request.getEtudiantId();
+        if (etudiantId != null) {
+            // V4 : l'étudiant doit exister dans service-utilisateurs (OpenFeign)
+            UserDto etudiant = utilisateurs.user(etudiantId);
+            if (!"ETUDIANT".equals(etudiant.getRole()) || !etudiant.isActif()) {
+                throw new ConflitMetierException("L'utilisateur n'est pas un étudiant actif");
+            }
+            nom = etudiant.getNom().strip().replaceAll("\\s+", " ");
+            if (absences.existsByAppelIdAndEtudiantId(appelId, etudiantId)) {
+                throw new ConflitMetierException(
+                        "Une absence existe déjà pour cet étudiant sur cet appel");
+            }
+        } else {
+            if (request.getEtudiantNom() == null || request.getEtudiantNom().isBlank()) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "etudiantId ou etudiantNom est obligatoire");
+            }
+            nom = request.getEtudiantNom().strip().replaceAll("\\s+", " ");
+        }
         if (absences.existsByAppelIdAndEtudiantNomIgnoreCase(appelId, nom)) {
             throw new ConflitMetierException(
                     "Une absence existe déjà pour cet étudiant sur cet appel");
         }
         Absence absence = new Absence();
         absence.setAppelId(appelId);
+        absence.setEtudiantId(etudiantId);
         absence.setEtudiantNom(nom);
         absence.setMotif(request.getMotif().strip());
         absence.setJustifiee(request.getJustifiee());

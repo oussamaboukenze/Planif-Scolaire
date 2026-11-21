@@ -1,0 +1,60 @@
+@referentiel = http://localhost:8081
+@planning = http://localhost:8082
+@presences = http://localhost:8083
+@notifications = http://localhost:8084
+@gateway = http://localhost:8080
+@registry = http://localhost:8761
+@config = http://localhost:8888
+
+# service-planning (8082) : seances de cours
+# Prerequis : avoir lance 01-referentiel.http (classeId, enseignantId).
+
+### Creer un cours -> 201 (en-tete idempotencyKey obligatoire, une nouvelle cle a chaque fois)
+POST {{planning}}/api/cours
+Content-Type: application/json
+idempotencyKey: {{$random.uuid}}
+
+{
+  "classeId": {{classeId}},
+  "enseignantId": {{enseignantId}},
+  "matiere": "Maths",
+  "dateHeure": "2026-12-01T09:00:00",
+  "salle": "A-{{$random.alphanumeric(5)}}"
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201, "status " + response.status));
+    client.global.set("coursId", response.body.id);
+    client.test("statut PLANIFIE", () => client.assert(response.body.statut === "PLANIFIE"));
+%}
+
+### Lire le cours -> 200
+GET {{planning}}/api/cours/{{coursId}}
+
+> {% client.test("200", () => client.assert(response.status === 200)); %}
+
+### Detail enrichi (appel Feign vers le referentiel) -> 200 avec classe et enseignant
+GET {{planning}}/api/cours/{{coursId}}/detail
+
+> {%
+    client.test("200", () => client.assert(response.status === 200));
+    client.test("classe enrichie", () => client.assert(response.body.classe != null));
+    client.test("enseignant enrichi", () => client.assert(response.body.enseignant != null));
+%}
+
+### Cours invalide (champs manquants) -> 400
+POST {{planning}}/api/cours
+Content-Type: application/json
+idempotencyKey: {{$random.uuid}}
+
+{}
+
+> {% client.test("400", () => client.assert(response.status === 400)); %}
+
+### Cours inexistant -> 404
+GET {{planning}}/api/cours/999999
+
+> {% client.test("404", () => client.assert(response.status === 404)); %}
+
+### Lister les cours
+GET {{planning}}/api/cours

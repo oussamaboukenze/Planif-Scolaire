@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planif-Scolaire – Tests</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #6b7385; --line: #e3e6ec;
+    --ok: #1f8a4c; --ok-bg: #e5f5ec; --ko: #c62f2f; --ko-bg: #fbe9e9; --run: #b26b00; --run-bg: #fff3df;
+    --skip: #6b7385; --skip-bg: #eef0f4; --accent: #2f5bd3; --code: #f1f3f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1a1e26; --text: #e6e9ef; --muted: #98a0b0; --line: #2a303b;
+      --ok: #4cc583; --ok-bg: #173325; --ko: #ff6b6b; --ko-bg: #3a1c1f; --run: #f0b34a; --run-bg: #3a2c12;
+      --skip: #98a0b0; --skip-bg: #232833; --accent: #7aa2ff; --code: #11141a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, "Segoe UI", sans-serif; }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+  h1 { font-size: 18px; margin: 0; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--skip-bg); color: var(--skip); white-space: nowrap; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.ko { background: var(--ko-bg); color: var(--ko); }
+  main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
+  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .summary { margin-left: auto; color: var(--muted); font-size: 13px; }
+  .group { margin-top: 14px; }
+  .group-head { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .group-head .desc { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .group-head button { margin-left: auto; padding: 3px 10px; font-size: 12px; }
+  .test { border-bottom: 1px solid var(--line); }
+  .test-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 7px 0; cursor: pointer; }
+  .tid { font: 12px ui-monospace, Consolas, monospace; color: var(--muted); }
+  .tname small { display: block; color: var(--muted); font-size: 12px; }
+  .status { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--skip-bg); color: var(--skip); white-space: nowrap; }
+  .status.ok { background: var(--ok-bg); color: var(--ok); } .status.ko { background: var(--ko-bg); color: var(--ko); }
+  .status.run { background: var(--run-bg); color: var(--run); }
+  .test-row button { padding: 2px 9px; font-size: 12px; }
+  .details { display: none; padding: 4px 0 12px 54px; }
+  .test.open .details { display: block; }
+  .msg { margin: 4px 0 8px; }
+  .msg.ko { color: var(--ko); }
+  .call { margin: 6px 0; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .call-head { padding: 5px 9px; background: var(--code); font: 12px ui-monospace, Consolas, monospace; display: flex; gap: 8px; flex-wrap: wrap; }
+  pre { margin: 0; padding: 8px 10px; background: var(--code); font: 12px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; }
+  .ctx { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-bottom: 14px; }
+  .ctx div { background: var(--code); border-radius: 7px; padding: 6px 9px; font-size: 12px; }
+  .ctx b { display: block; font: 13px ui-monospace, Consolas, monospace; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  select, input, textarea { width: 100%; font: 13px ui-monospace, Consolas, monospace; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--code); color: var(--text); }
+  textarea { min-height: 90px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 150px 110px minmax(0, 1fr); gap: 8px; }
+  @media (max-width: 600px) { .row { grid-template-columns: 1fr 1fr; } .row input { grid-column: 1 / -1; } }
+  .resp-head { display: flex; gap: 10px; align-items: center; margin: 12px 0 6px; }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Planif-Scolaire · Interface de test</h1>
+  <div class="pills" id="pills"></div>
+  <button id="refreshPills" title="Verifier l'etat des services">Rafraichir l'etat</button>
+</header>
+
+<main>
+  <section class="card">
+    <div class="toolbar">
+      <button class="primary" id="runAll">Lancer tous les tests</button>
+      <button id="reset">Reinitialiser</button>
+      <span class="summary" id="summary"></span>
+    </div>
+    <p class="hint">Les tests s'enchainent : chaque groupe reutilise les identifiants crees par les precedents. Cliquer sur une ligne pour voir les requetes et les reponses.</p>
+    <div id="tests"></div>
+  </section>
+
+  <section class="card">
+    <h2>Donnees du scenario</h2>
+    <p class="hint">Identifiants crees pendant les tests, reutilisables dans la console.</p>
+    <div class="ctx" id="ctx"></div>
+
+    <h2>Console manuelle</h2>
+    <p class="hint">Envoyer n'importe quelle requete a un service. Ecrire <code>{classeId}</code>, <code>{coursId}</code>… pour utiliser les donnees ci-dessus.</p>
+    <label>Exemple</label>
+    <select id="example"></select>
+    <div class="row">
+      <div><label>Service</label><select id="mService"></select></div>
+      <div><label>Methode</label><select id="mMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+      <div><label>Chemin</label><input id="mPath" value="/api/classes"></div>
+    </div>
+    <label>En-tetes (JSON)</label>
+    <textarea id="mHeaders" style="min-height:60px">{}</textarea>
+    <label>Corps (JSON)</label>
+    <textarea id="mBody"></textarea>
+    <div class="toolbar" style="margin-top:10px"><button class="primary" id="mSend">Envoyer</button></div>
+    <div class="resp-head"><span class="status" id="mStatus">—</span><span class="tid" id="mTime"></span></div>
+    <pre id="mResp">La reponse s'affichera ici.</pre>
+    <p class="hint" style="margin-top:14px">Liens utiles : <a href="http://localhost:8761" target="_blank">Eureka</a> · <a href="http://localhost:8025" target="_blank">Mailpit (emails)</a></p>
+  </section>
+</main>
+
+<script>
+const SERVICES = {
+  referentiel: "Referentiel 8081", planning: "Planning 8082", presences: "Presences 8083",
+  notifications: "Notifications 8084", gateway: "Gateway 8080", registry: "Eureka 8761",
+  config: "Config 8888", mailpit: "Mailpit 8025",
+};
+const HUGE = "9223372036854775807";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const uid = () => Math.random().toString(36).slice(2, 8);
+const uuid = () => crypto.randomUUID();
+
+let ctx = {};
+let log = [];
+
+async function call(service, method, path, { body, headers = {} } = {}) {
+  const h = { ...headers };
+  if (body !== undefined && !h["Content-Type"]) h["Content-Type"] = "application/json";
+  const t0 = performance.now();
+  let res, text = "", json = null, status = 0, err = null;
+  try {
+    res = await fetch(`/proxy/${service}${path}`, {
+      method, headers: h, body: body === undefined ? undefined : (typeof body === "string" ? body : JSON.stringify(body)),
+    });
+    status = res.status;
+    text = await res.text();
+    try { json = text ? JSON.parse(text) : null; } catch { /* texte brut */ }
+  } catch (e) { err = e.message; }
+  const r = { service, method, path, reqHeaders: h, reqBody: body, status, json, text, ms: Math.round(performance.now() - t0),
+              location: res?.headers.get("location"), err };
+  log.push(r);
+  return r;
+}
+
+class Fail extends Error {}
+class Skip extends Error {}
+function expect(cond, msg) { if (!cond) throw new Fail(msg); }
+function expectStatus(r, s) {
+  expect(r.status === s, `Statut attendu ${s}, recu ${r.status || "aucune reponse"}${r.json?.detail ? " — " + r.json.detail : ""}`);
+}
+function expectProblem(r, s) {
+  expectStatus(r, s);
+  expect(r.json && typeof r.json.detail === "string" && r.json.detail.length > 0, "La reponse d'erreur doit contenir un champ detail");
+}
+function need(...keys) { for (const k of keys) if (ctx[k] === undefined) throw new Skip(`Necessite ${k} (lancer d'abord les tests qui le creent)`); }
+async function poll(fn, cond, seconds = 30) {
+  const end = Date.now() + seconds * 1000; let last;
+  while (Date.now() < end) { last = await fn(); if (cond(last)) return last; await sleep(700); }
+  return last;
+}
+
+/* ---------- Definition des tests ---------- */
+const GROUPS = [
+  { name: "Sante", desc: "Chaque service repond", tests: [
+    ["S1", "Referentiel UP", "GET /actuator/health → UP", async () => { const r = await call("referentiel", "GET", "/actuator/health"); expectStatus(r, 200); expect(r.json?.status === "UP", "status != UP"); }],
+    ["S2", "Planning UP", "GET /actuator/health → UP", async () => { const r = await call("planning", "GET", "/actuator/health"); expectStatus(r, 200); expect(r.json?.status === "UP", "status != UP"); }],
+    ["S3", "Presences UP", "GET /actuator/health → UP", async () => { const r = await call("presences", "GET", "/actuator/health"); expectStatus(r, 200); expect(r.json?.status === "UP", "status != UP"); }],
+    ["S4", "Notifications UP", "GET /actuator/health → UP", async () => { const r = await call("notifications", "GET", "/actuator/health"); expectStatus(r, 200); expect(r.json?.status === "UP", "status != UP"); }],
+    ["S5", "Eureka : 5 services enregistres", "GET /eureka/apps", async () => {
+      const r = await call("registry", "GET", "/eureka/apps", { headers: { Accept: "application/json" } }); expectStatus(r, 200);
+      const apps = [].concat(r.json?.applications?.application || []).map((a) => a.name);
+      const missing = ["SERVICE-REFERENTIEL", "SERVICE-PLANNING", "SERVICE-PRESENCES", "NOTIFICATION-SERVICE", "GATEWAY-SERVICE"].filter((n) => !apps.includes(n));
+      expect(!missing.length, "Absents d'Eureka : " + missing.join(", "));
+    }],
+    ["S6", "Config server sert la configuration", "GET /service-planning/default", async () => {
+      const r = await call("config", "GET", "/service-planning/default"); expectStatus(r, 200);
+      expect(r.json?.propertySources?.length > 0, "Aucune propertySource");
+    }],
+  ]},
+  { name: "Referentiel", desc: "Classes et enseignants (8081)", tests: [
+    ["R1", "Creer une classe", "POST /api/classes → 201 + Location", async () => {
+      ctx.suffix = ctx.suffix || uid();
+      const r = await call("referentiel", "POST", "/api/classes", { body: { nom: "Classe-" + ctx.suffix, niveau: "6e", effectifMax: 30 } });
+      expectStatus(r, 201); expect(r.json?.id > 0, "id manquant"); expect(r.location, "En-tete Location manquant"); ctx.classeId = r.json.id;
+    }],
+    ["R2", "Lire la classe", "GET /api/classes/{id} → 200", async () => { need("classeId"); const r = await call("referentiel", "GET", `/api/classes/${ctx.classeId}`); expectStatus(r, 200); expect(r.json.effectifMax === 30, "effectifMax != 30"); }],
+    ["R3", "Modifier la classe", "PUT /api/classes/{id} → 200", async () => {
+      need("classeId"); const r = await call("referentiel", "PUT", `/api/classes/${ctx.classeId}`, { body: { nom: "Classe-" + ctx.suffix, niveau: "6e", effectifMax: 32 } });
+      expectStatus(r, 200); expect(r.json.effectifMax === 32, "Modification non appliquee");
+    }],
+    ["R4", "Lister les classes", "GET /api/classes contient la classe", async () => { need("classeId"); const r = await call("referentiel", "GET", "/api/classes"); expectStatus(r, 200); expect(r.json.some((c) => c.id === ctx.classeId), "Classe absente de la liste"); }],
+    ["R5", "Classe invalide", "nom vide, effectif 0 → 400", async () => { const r = await call("referentiel", "POST", "/api/classes", { body: { nom: "", niveau: "", effectifMax: 0 } }); expectProblem(r, 400); }],
+    ["R6", "Classe inexistante", "GET id absent → 404", async () => { const r = await call("referentiel", "GET", `/api/classes/${HUGE}`); expectProblem(r, 404); }],
+    ["R7", "Creer un enseignant", "POST /api/enseignants → 201", async () => {
+      ctx.suffix = ctx.suffix || uid();
+      const r = await call("referentiel", "POST", "/api/enseignants", { body: { nom: "Prof-" + ctx.suffix, matiere: "Maths", chargeMaxHeures: 20 } });
+      expectStatus(r, 201); expect(r.location, "En-tete Location manquant"); ctx.enseignantId = r.json.id;
+    }],
+    ["R8", "Lire l'enseignant", "GET /api/enseignants/{id} → 200", async () => { need("enseignantId"); const r = await call("referentiel", "GET", `/api/enseignants/${ctx.enseignantId}`); expectStatus(r, 200); }],
+    ["R9", "Enseignant invalide", "nom et matiere vides → 400", async () => { const r = await call("referentiel", "POST", "/api/enseignants", { body: { nom: "", matiere: "", chargeMaxHeures: 0 } }); expectProblem(r, 400); }],
+    ["R10", "Enseignant inexistant", "GET id absent → 404", async () => { const r = await call("referentiel", "GET", `/api/enseignants/${HUGE}`); expectProblem(r, 404); }],
+  ]},
+  { name: "Planning", desc: "Seances de cours (8082)", tests: [
+    ["P1", "Creer un cours", "POST /api/cours + idempotencyKey → 201 PLANIFIE", async () => {
+      need("classeId", "enseignantId");
+      ctx.coursBody = { classeId: ctx.classeId, enseignantId: ctx.enseignantId, matiere: "Maths", dateHeure: "2026-12-01T09:00:00", salle: "Salle-" + ctx.suffix };
+      ctx.idemKey = uuid();
+      const r = await call("planning", "POST", "/api/cours", { body: ctx.coursBody, headers: { idempotencyKey: ctx.idemKey } });
+      expectStatus(r, 201); expect(r.location, "En-tete Location manquant"); expect(r.json.statut === "PLANIFIE", "statut != PLANIFIE"); ctx.coursId = r.json.id;
+    }],
+    ["P2", "Lire le cours", "GET /api/cours/{id} → 200", async () => { need("coursId"); const r = await call("planning", "GET", `/api/cours/${ctx.coursId}`); expectStatus(r, 200); }],
+    ["P3", "Detail enrichi (Feign)", "GET /api/cours/{id}/detail → classe + enseignant", async () => {
+      need("coursId"); const r = await call("planning", "GET", `/api/cours/${ctx.coursId}/detail`); expectStatus(r, 200);
+      expect(r.json.classe?.id === ctx.classeId, "classe non enrichie"); expect(r.json.enseignant?.id === ctx.enseignantId, "enseignant non enrichi");
+    }],
+    ["P4", "Cours invalide", "corps vide → 400", async () => { const r = await call("planning", "POST", "/api/cours", { body: {}, headers: { idempotencyKey: uuid() } }); expectProblem(r, 400); }],
+    ["P5", "Sans idempotencyKey", "en-tete absent → 400", async () => { need("coursBody"); const r = await call("planning", "POST", "/api/cours", { body: { ...ctx.coursBody, salle: "X-" + uid() } }); expectStatus(r, 400); }],
+    ["P6", "Cle deja utilisee", "meme idempotencyKey → 400", async () => {
+      need("coursBody", "idemKey"); const r = await call("planning", "POST", "/api/cours", { body: ctx.coursBody, headers: { idempotencyKey: ctx.idemKey } });
+      expectProblem(r, 400);
+    }],
+    ["P7", "Conflit de creneau", "meme creneau, nouvelle cle → 409", async () => { need("coursBody"); const r = await call("planning", "POST", "/api/cours", { body: ctx.coursBody, headers: { idempotencyKey: uuid() } }); expectProblem(r, 409); }],
+    ["P8", "Classe distante inexistante", "classeId absent du referentiel → 404", async () => {
+      need("enseignantId");
+      const r = await call("planning", "POST", "/api/cours", { body: { classeId: Number(HUGE.slice(0, 15)), enseignantId: ctx.enseignantId, matiere: "Maths", dateHeure: "2026-12-03T09:00:00", salle: "Z-" + uid() }, headers: { idempotencyKey: uuid() } });
+      expectProblem(r, 404);
+    }],
+    ["P9", "Cours inexistant", "GET id absent → 404", async () => { const r = await call("planning", "GET", `/api/cours/${HUGE}`); expectProblem(r, 404); }],
+  ]},
+  { name: "Presences", desc: "Feuilles d'appel et absences (8083) — via Kafka", tests: [
+    ["A1", "Feuille d'appel creee par Kafka", "GET /api/appels/cours/{coursId} → OUVERT (attente ≤ 30 s)", async () => {
+      need("coursId"); const r = await poll(() => call("presences", "GET", `/api/appels/cours/${ctx.coursId}`), (x) => x.status === 200);
+      expectStatus(r, 200); expect(r.json.statut === "OUVERT", "statut != OUVERT"); ctx.appelId = r.json.id;
+    }],
+    ["A2", "Absence avant realisation", "cours encore PLANIFIE → 409", async () => {
+      need("appelId"); const r = await call("presences", "POST", `/api/appels/${ctx.appelId}/absences`, { body: { etudiantNom: "Sara " + ctx.suffix, motif: "Maladie", justifiee: true } });
+      expectProblem(r, 409);
+    }],
+    ["A3", "Realiser le cours", "PATCH /api/cours/{id}/statut REALISE → 200", async () => {
+      need("coursId"); const r = await call("planning", "PATCH", `/api/cours/${ctx.coursId}/statut`, { body: { statut: "REALISE" } });
+      expectStatus(r, 200); expect(r.json.statut === "REALISE", "statut != REALISE");
+    }],
+    ["A4", "Saisir une absence", "POST /api/appels/{id}/absences → 201", async () => {
+      need("appelId"); const r = await call("presences", "POST", `/api/appels/${ctx.appelId}/absences`, { body: { etudiantNom: "Sara " + ctx.suffix, motif: "Maladie", justifiee: true } });
+      expectStatus(r, 201); expect(r.location, "En-tete Location manquant");
+    }],
+    ["A5", "Absence en double", "meme etudiant → 409", async () => {
+      need("appelId"); const r = await call("presences", "POST", `/api/appels/${ctx.appelId}/absences`, { body: { etudiantNom: "Sara " + ctx.suffix, motif: "Maladie", justifiee: true } });
+      expectProblem(r, 409);
+    }],
+    ["A6", "Lister les absences", "GET /api/appels/{id}/absences → 1 absence", async () => { need("appelId"); const r = await call("presences", "GET", `/api/appels/${ctx.appelId}/absences`); expectStatus(r, 200); expect(r.json.length === 1, `${r.json.length} absence(s) au lieu de 1`); }],
+    ["A7", "Compteur mis a jour dans le planning", "nbAbsencesSignalees = 1 (Kafka)", async () => {
+      need("coursId"); const r = await poll(() => call("planning", "GET", `/api/cours/${ctx.coursId}`), (x) => x.json?.nbAbsencesSignalees === 1);
+      expect(r.json?.nbAbsencesSignalees === 1, `compteur = ${r.json?.nbAbsencesSignalees}`);
+    }],
+    ["A8", "Absence invalide", "corps vide → 400", async () => { need("appelId"); const r = await call("presences", "POST", `/api/appels/${ctx.appelId}/absences`, { body: {} }); expectProblem(r, 400); }],
+    ["A9", "Appel inexistant", "GET id absent → 404", async () => { const r = await call("presences", "GET", `/api/appels/${HUGE}`); expectProblem(r, 404); }],
+    ["A10", "Absence sur appel inexistant", "POST sur id absent → 404", async () => {
+      const r = await call("presences", "POST", `/api/appels/${HUGE}/absences`, { body: { etudiantNom: "Sara", motif: "Maladie", justifiee: true } }); expectProblem(r, 404);
+    }],
+    ["A11", "Annulation → appel CLOTURE", "2e cours, ANNULE, puis feuille CLOTURE", async () => {
+      need("coursBody");
+      const c = await call("planning", "POST", "/api/cours", { body: { ...ctx.coursBody, dateHeure: "2026-12-01T11:00:00" }, headers: { idempotencyKey: uuid() } });
+      expectStatus(c, 201); ctx.coursAnnuleId = c.json.id;
+      const a = await poll(() => call("presences", "GET", `/api/appels/cours/${ctx.coursAnnuleId}`), (x) => x.status === 200); expectStatus(a, 200);
+      const p = await call("planning", "PATCH", `/api/cours/${ctx.coursAnnuleId}/statut`, { body: { statut: "ANNULE" } }); expectStatus(p, 200);
+      const f = await poll(() => call("presences", "GET", `/api/appels/cours/${ctx.coursAnnuleId}`), (x) => x.json?.statut === "CLOTURE");
+      expect(f.json?.statut === "CLOTURE", `statut = ${f.json?.statut}`);
+    }],
+  ]},
+  { name: "Notifications", desc: "Emails envoyes depuis Kafka (8084 + Mailpit)", tests: [
+    ["N1", "Email cours planifie", "COURSE_SCHEDULED = SENT", async () => {
+      need("coursId"); const r = await poll(() => call("notifications", "GET", `/api/notifications/cours/${ctx.coursId}`), (x) => x.json?.some?.((n) => n.eventType === "COURSE_SCHEDULED" && n.status === "SENT"));
+      const n = r.json?.find?.((n) => n.eventType === "COURSE_SCHEDULED"); expect(n?.status === "SENT", `statut = ${n?.status || "aucune notification"}`); ctx.eventId = n.eventId;
+    }],
+    ["N2", "Email absence", "ABSENCE_RECORDED = SENT", async () => {
+      need("coursId"); const r = await poll(() => call("notifications", "GET", `/api/notifications/cours/${ctx.coursId}`), (x) => x.json?.some?.((n) => n.eventType === "ABSENCE_RECORDED" && n.status === "SENT"));
+      const n = r.json?.find?.((n) => n.eventType === "ABSENCE_RECORDED"); expect(n?.status === "SENT", `statut = ${n?.status || "aucune notification"}`);
+    }],
+    ["N3", "Email annulation", "COURSE_CANCELLED = SENT", async () => {
+      need("coursAnnuleId"); const r = await poll(() => call("notifications", "GET", `/api/notifications/cours/${ctx.coursAnnuleId}`), (x) => x.json?.some?.((n) => /CANCEL/.test(n.eventType) && n.status === "SENT"));
+      const n = r.json?.find?.((n) => /CANCEL/.test(n.eventType)); expect(n?.status === "SENT", `statut = ${n?.status || "aucune notification d'annulation"}`);
+    }],
+    ["N4", "Lire par eventId", "GET /api/notifications/{eventId} → 200", async () => { need("eventId"); const r = await call("notifications", "GET", `/api/notifications/${ctx.eventId}`); expectStatus(r, 200); expect(r.json.eventId === ctx.eventId, "eventId different"); }],
+    ["N5", "eventId inexistant", "UUID inconnu → 404", async () => { const r = await call("notifications", "GET", `/api/notifications/${uuid()}`); expectStatus(r, 404); }],
+    ["N6", "Email visible dans Mailpit", "GET Mailpit /api/v1/messages", async () => {
+      const r = await call("mailpit", "GET", "/api/v1/messages?limit=5"); expectStatus(r, 200); expect(r.json?.total > 0, "Aucun email dans Mailpit");
+    }],
+  ]},
+  { name: "Gateway", desc: "Routage et limitation de debit (8080 + Redis)", tests: [
+    ["G1", "Route referentiel", "GET 8080/api/classes/{id} → 200", async () => { need("classeId"); const r = await call("gateway", "GET", `/api/classes/${ctx.classeId}`, { headers: { "X-Client-Id": "ui-" + uid() } }); expectStatus(r, 200); }],
+    ["G2", "Route planning", "GET 8080/api/cours/{id} → 200", async () => { need("coursId"); const r = await call("gateway", "GET", `/api/cours/${ctx.coursId}`, { headers: { "X-Client-Id": "ui-" + uid() } }); expectStatus(r, 200); }],
+    ["G3", "Route presences", "GET 8080/api/appels/cours/{id} → 200", async () => { need("coursId"); const r = await call("gateway", "GET", `/api/appels/cours/${ctx.coursId}`, { headers: { "X-Client-Id": "ui-" + uid() } }); expectStatus(r, 200); }],
+    ["G4", "Route notifications", "GET 8080/api/notifications/cours/{id} → 200", async () => { need("coursId"); const r = await call("gateway", "GET", `/api/notifications/cours/${ctx.coursId}`, { headers: { "X-Client-Id": "ui-" + uid() } }); expectStatus(r, 200); }],
+    ["G5", "Rate limit", "30 requetes simultanees → au moins un 429", async () => {
+      // Le navigateur n'envoie que 6 requetes a la fois : 30 requetes depassent largement le burst de 10.
+      const id = "burst-" + uid();
+      const rs = await Promise.all(Array.from({ length: 30 },() => call("gateway", "GET", "/api/classes", { headers: { "X-Client-Id": id } })));
+      const counts = rs.reduce((m, r) => ((m[r.status] = (m[r.status] || 0) + 1), m), {});
+      expect(counts[429] > 0, "Aucun 429 : " + JSON.stringify(counts));
+      return "Statuts : " + JSON.stringify(counts);
+    }],
+  ]},
+];
+
+/* ---------- Rendu et execution ---------- */
+const state = {};
+const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, attrs); e.append(...kids); return e; };
+const esc = (v) => (v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v, null, 2));
+
+function renderTests() {
+  const root = document.getElementById("tests"); root.innerHTML = "";
+  for (const g of GROUPS) {
+    const runG = el("button", { textContent: "Lancer le groupe", onclick: (e) => { e.stopPropagation(); runList(g.tests); } });
+    const box = el("div", { className: "group" }, el("div", { className: "group-head" }, g.name, el("span", { className: "desc" }, g.desc), runG));
+    for (const t of g.tests) {
+      const [id, name, sub] = t;
+      const st = state[id] || { s: "idle" };
+      const label = { idle: "non lance", run: "en cours…", ok: "reussi", ko: "echec", skip: "ignore" }[st.s];
+      const cls = { idle: "", run: "run", ok: "ok", ko: "ko", skip: "" }[st.s];
+      const runB = el("button", { textContent: "Lancer", onclick: (e) => { e.stopPropagation(); runList([t]); } });
+      const row = el("div", { className: "test-row" }, el("span", { className: "tid", textContent: id }),
+        el("span", { className: "tname" }, name, el("small", { textContent: sub })), el("span", { className: "status " + cls, textContent: label }), runB);
+      const details = el("div", { className: "details" });
+      if (st.msg) details.append(el("div", { className: "msg " + (st.s === "ko" ? "ko" : ""), textContent: st.msg }));
+      for (const c of st.calls || []) {
+        details.append(el("div", { className: "call" },
+          el("div", { className: "call-head", textContent: `${c.method} ${SERVICES[c.service]} ${c.path} → ${c.status || "erreur"} (${c.ms} ms)` }),
+          el("pre", { textContent: (c.reqBody !== undefined ? "Corps envoye :\n" + esc(c.reqBody) + "\n\n" : "") + "Reponse :\n" + (c.err || (c.json ? esc(c.json) : c.text) || "(vide)") })));
+      }
+      if (!st.calls?.length && !st.msg) details.append(el("div", { className: "msg", textContent: "Pas encore lance." }));
+      const wrap = el("div", { className: "test" + (st.open ? " open" : "") }, row, details);
+      row.onclick = () => { st.open = !st.open; state[id] = st; wrap.classList.toggle("open"); };
+      box.append(wrap);
+    }
+    root.append(box);
+  }
+  const all = GROUPS.flatMap((g) => g.tests.map((t) => state[t[0]]?.s));
+  const n = (s) => all.filter((x) => x === s).length;
+  document.getElementById("summary").textContent = `${n("ok")} reussis · ${n("ko")} echecs · ${n("skip")} ignores · ${all.length} tests`;
+  renderCtx();
+}
+
+function renderCtx() {
+  const keys = ["classeId", "enseignantId", "coursId", "appelId", "coursAnnuleId", "eventId", "idemKey"];
+  document.getElementById("ctx").replaceChildren(...keys.map((k) => el("div", {}, k, el("b", { textContent: ctx[k] ?? "—" }))));
+}
+
+let running = false;
+async function runList(list) {
+  if (running) return; running = true;
+  document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  for (const [id, , , fn] of list) {
+    state[id] = { ...(state[id] || {}), s: "run", calls: [], msg: "" }; renderTests();
+    log = [];
+    try { const info = await fn(); state[id].s = "ok"; state[id].msg = typeof info === "string" ? info : ""; }
+    catch (e) { state[id].s = e instanceof Skip ? "skip" : "ko"; state[id].msg = e.message; if (!(e instanceof Fail) && !(e instanceof Skip)) console.error(e); }
+    state[id].calls = log.slice(-12);
+    if (state[id].s === "ko") state[id].open = true;
+    renderTests();
+  }
+  document.querySelectorAll("button").forEach((b) => (b.disabled = false));
+  running = false;
+}
+
+document.getElementById("runAll").onclick = () => runList(GROUPS.flatMap((g) => g.tests));
+document.getElementById("reset").onclick = () => { ctx = {}; for (const k in state) delete state[k]; renderTests(); };
+
+/* ---------- Etat des services ---------- */
+async function refreshPills() {
+  const checks = [["referentiel", "/actuator/health"], ["planning", "/actuator/health"], ["presences", "/actuator/health"],
+    ["notifications", "/actuator/health"], ["gateway", "/api/classes"], ["registry", "/eureka/apps"], ["config", "/service-planning/default"], ["mailpit", "/api/v1/info"]];
+  const box = document.getElementById("pills");
+  box.replaceChildren(...checks.map(([s]) => el("span", { className: "pill", id: "pill-" + s, textContent: SERVICES[s] })));
+  await Promise.all(checks.map(async ([s, p]) => {
+    let ok = false;
+    try { const r = await fetch(`/proxy/${s}${p}`, { headers: s === "gateway" ? { "X-Client-Id": "health-" + uid() } : {} }); ok = r.ok && (!p.includes("health") || (await r.json()).status === "UP"); } catch {}
+    document.getElementById("pill-" + s).className = "pill " + (ok ? "ok" : "ko");
+  }));
+}
+document.getElementById("refreshPills").onclick = refreshPills;
+
+/* ---------- Console manuelle ---------- */
+const EXAMPLES = [
+  ["Lister les classes", "referentiel", "GET", "/api/classes", {}, ""],
+  ["Creer une classe", "referentiel", "POST", "/api/classes", {}, { nom: "6B", niveau: "6e", effectifMax: 28 }],
+  ["Creer un enseignant", "referentiel", "POST", "/api/enseignants", {}, { nom: "Prof Test", matiere: "Francais", chargeMaxHeures: 18 }],
+  ["Creer un cours", "planning", "POST", "/api/cours", { idempotencyKey: "{uuid}" }, { classeId: "{classeId}", enseignantId: "{enseignantId}", matiere: "Maths", dateHeure: "2026-12-05T08:00:00", salle: "B12" }],
+  ["Detail d'un cours", "planning", "GET", "/api/cours/{coursId}/detail", {}, ""],
+  ["Passer un cours a REALISE", "planning", "PATCH", "/api/cours/{coursId}/statut", {}, { statut: "REALISE" }],
+  ["Feuille d'appel d'un cours", "presences", "GET", "/api/appels/cours/{coursId}", {}, ""],
+  ["Saisir une absence", "presences", "POST", "/api/appels/{appelId}/absences", {}, { etudiantNom: "Yassine", motif: "Retard", justifiee: false }],
+  ["Emails d'un cours", "notifications", "GET", "/api/notifications/cours/{coursId}", {}, ""],
+  ["Via le gateway", "gateway", "GET", "/api/cours", { "X-Client-Id": "console" }, ""],
+];
+const exSel = document.getElementById("example"), mService = document.getElementById("mService");
+exSel.append(el("option", { textContent: "— choisir —", value: "" }), ...EXAMPLES.map((e, i) => el("option", { value: i, textContent: e[0] })));
+mService.append(...Object.entries(SERVICES).map(([k, v]) => el("option", { value: k, textContent: v })));
+exSel.onchange = () => {
+  const e = EXAMPLES[exSel.value]; if (!e) return;
+  mService.value = e[1]; document.getElementById("mMethod").value = e[2]; document.getElementById("mPath").value = e[3];
+  document.getElementById("mHeaders").value = JSON.stringify(e[4], null, 2);
+  document.getElementById("mBody").value = e[5] ? JSON.stringify(e[5], null, 2).replace(/"\{(\w+)\}"/g, "{$1}") : "";
+};
+const fill = (s) => s.replace(/\{uuid\}/g, () => uuid()).replace(/\{(\w+)\}/g, (m, k) => (ctx[k] !== undefined ? ctx[k] : m));
+document.getElementById("mSend").onclick = async () => {
+  const out = document.getElementById("mResp"), st = document.getElementById("mStatus");
+  let headers;
+  try { headers = JSON.parse(fill(document.getElementById("mHeaders").value || "{}")); } catch { out.textContent = "En-tetes : JSON invalide"; return; }
+  const raw = fill(document.getElementById("mBody").value.trim());
+  st.textContent = "…"; st.className = "status run";
+  const r = await call(mService.value, document.getElementById("mMethod").value, fill(document.getElementById("mPath").value), { body: raw || undefined, headers });
+  st.textContent = r.status || "erreur"; st.className = "status " + (r.status >= 200 && r.status < 300 ? "ok" : "ko");
+  document.getElementById("mTime").textContent = `${r.ms} ms${r.location ? " · Location: " + r.location : ""}`;
+  out.textContent = r.err || (r.json ? esc(r.json) : r.text) || "(vide)";
+  if (r.json?.id && r.status === 201) {
+    const key = { "/api/classes": "classeId", "/api/enseignants": "enseignantId", "/api/cours": "coursId" }[r.path];
+    if (key) { ctx[key] = r.json.id; renderCtx(); }
+  }
+};
+
+renderTests();
+refreshPills();
+</script>
+</body>
+</html>

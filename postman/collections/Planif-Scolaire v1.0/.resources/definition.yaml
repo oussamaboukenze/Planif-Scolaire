@@ -4,6 +4,8 @@ variables:
   referentielUrl: http://localhost:8081
   planningUrl: http://localhost:8082
   presencesUrl: http://localhost:8083
+  utilisateursUrl: http://localhost:8085
+  gatewayUrl: http://localhost:8080
   runId: ""
   tentatives: ""
   classeId: ""

@@ -1,0 +1,82 @@
+@referentiel = http://localhost:8081
+@planning = http://localhost:8082
+@presences = http://localhost:8083
+@notifications = http://localhost:8084
+@gateway = http://localhost:8080
+@registry = http://localhost:8761
+@config = http://localhost:8888
+
+# service-referentiel (8081) : classes et enseignants
+# A lancer en premier : enregistre classeId et enseignantId pour les fichiers suivants.
+
+### Creer une classe -> 201
+POST {{referentiel}}/api/classes
+Content-Type: application/json
+
+{
+  "nom": "6A-{{$random.alphanumeric(6)}}",
+  "niveau": "6e",
+  "effectifMax": 30
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201, "status " + response.status));
+    client.global.set("classeId", response.body.id);
+%}
+
+### Lire la classe -> 200
+GET {{referentiel}}/api/classes/{{classeId}}
+
+> {% client.test("200", () => client.assert(response.status === 200)); %}
+
+### Lister les classes -> 200
+GET {{referentiel}}/api/classes
+
+### Modifier la classe -> 200
+PUT {{referentiel}}/api/classes/{{classeId}}
+Content-Type: application/json
+
+{
+  "nom": "6A-modifiee-{{$random.alphanumeric(6)}}",
+  "niveau": "6e",
+  "effectifMax": 32
+}
+
+> {% client.test("200", () => client.assert(response.status === 200)); %}
+
+### Classe invalide -> 400
+POST {{referentiel}}/api/classes
+Content-Type: application/json
+
+{
+  "nom": "",
+  "niveau": "6e",
+  "effectifMax": 0
+}
+
+> {% client.test("400", () => client.assert(response.status === 400)); %}
+
+### Classe inexistante -> 404
+GET {{referentiel}}/api/classes/999999
+
+> {% client.test("404", () => client.assert(response.status === 404)); %}
+
+### Creer un enseignant -> 201
+POST {{referentiel}}/api/enseignants
+Content-Type: application/json
+
+{
+  "nom": "Prof-{{$random.alphanumeric(6)}}",
+  "matiere": "Maths",
+  "chargeMaxHeures": 20
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201));
+    client.global.set("enseignantId", response.body.id);
+%}
+
+### Lire l'enseignant -> 200
+GET {{referentiel}}/api/enseignants/{{enseignantId}}
+
+> {% client.test("200", () => client.assert(response.status === 200)); %}

@@ -1,0 +1,121 @@
+# Tests sur les DONNEES DE DEMO (seed-demo.sql, ids 1001+)
+# Classes 1001-1004 · Enseignants 1001-1004 · Utilisateurs 1001-1005
+# Cours 1001 (REALISE) · 1002, 1003 (PLANIFIE) · 1004 (ANNULE) · Appels 1001-1004 · Absences 1001-1002
+@ref = http://localhost:8081
+@users = http://localhost:8085
+@planning = http://localhost:8082
+@presences = http://localhost:8083
+@gateway = http://localhost:8080
+
+### ---------- GET ----------
+GET {{ref}}/api/classes
+###
+GET {{ref}}/api/enseignants/1001
+###
+GET {{users}}/api/users
+###
+GET {{planning}}/api/cours
+###
+GET {{planning}}/api/cours?classeId=1001
+###
+# Détail enrichi : classe + enseignant + 2 absences
+GET {{planning}}/api/cours/1001/detail
+###
+GET {{presences}}/api/appels/cours/1001
+###
+GET {{presences}}/api/appels/1001/absences
+###
+# Via la Gateway (statique puis dynamique)
+GET {{gateway}}/api/cours/1001
+###
+GET {{gateway}}/service-planning/api/cours/1001
+
+### ---------- POST ----------
+POST {{ref}}/api/classes
+Content-Type: application/json
+
+{ "nom": "5IIR-C", "niveau": "5IIR", "effectifMax": 25 }
+
+###
+POST {{users}}/api/users
+Content-Type: application/json
+
+{ "nom": "Amine Fassi", "email": "amine.fassi@emsi.ma", "role": "ETUDIANT", "actif": true }
+
+###
+# Nouveau cours (Karim = Microservices) -> 201 + email à karim.benali@emsi.ma (Mailpit)
+POST {{planning}}/api/cours
+Content-Type: application/json
+idempotencyKey: demo-{{$random.uuid}}
+
+{ "classeId": 1002, "enseignantId": 1001, "matiere": "Microservices", "dateHeure": "2026-11-27T09:00:00", "salle": "Amphi 2" }
+
+###
+# Absence d'un étudiant (cours 1001 REALISE) -> 201
+POST {{presences}}/api/appels/1001/absences
+Content-Type: application/json
+
+{ "etudiantId": 1003, "motif": "Maladie", "justifiee": true }
+
+###
+# Étudiant inactif (1004) -> 409
+POST {{presences}}/api/appels/1001/absences
+Content-Type: application/json
+
+{ "etudiantId": 1004, "motif": "Retard", "justifiee": false }
+
+###
+# Cours pas encore REALISE (appel 1002) -> 409
+POST {{presences}}/api/appels/1002/absences
+Content-Type: application/json
+
+{ "etudiantId": 1001, "motif": "Retard", "justifiee": false }
+
+###
+# Conflit de créneau (même enseignant, même heure que le cours 1001) -> 409
+POST {{planning}}/api/cours
+Content-Type: application/json
+idempotencyKey: demo-{{$random.uuid}}
+
+{ "classeId": 1003, "enseignantId": 1001, "matiere": "Microservices", "dateHeure": "2026-11-23T09:00:00", "salle": "Salle 20" }
+
+### ---------- PUT ----------
+PUT {{ref}}/api/classes/1003
+Content-Type: application/json
+
+{ "nom": "4IIR-A", "niveau": "4IIR", "effectifMax": 40 }
+
+###
+PUT {{users}}/api/users/1002
+Content-Type: application/json
+
+{ "nom": "Omar Bennani", "email": "omar.bennani@emsi.ma", "role": "ETUDIANT", "actif": false }
+
+### ---------- PATCH ----------
+# PLANIFIE -> REALISE
+PATCH {{planning}}/api/cours/1002/statut
+Content-Type: application/json
+
+{ "statut": "REALISE" }
+
+###
+# PLANIFIE -> ANNULE : événement course-cancelled -> appel 1003 CLOTURE + email à youssef.alaoui@emsi.ma
+PATCH {{planning}}/api/cours/1003/statut
+Content-Type: application/json
+
+{ "statut": "ANNULE" }
+
+###
+# Transition interdite (REALISE -> ANNULE) -> 409
+PATCH {{planning}}/api/cours/1001/statut
+Content-Type: application/json
+
+{ "statut": "ANNULE" }
+
+### ---------- DELETE ----------
+DELETE {{ref}}/api/classes/1004
+###
+DELETE {{users}}/api/users/1005
+###
+# Déjà supprimée -> 404
+GET {{ref}}/api/classes/1004

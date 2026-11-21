@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{presencesUrl}}/api/appels/{{appelId}}/absences"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"etudiantId": 999999999, "motif": "Retard", "justifiee": false}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 422 (etudiant distant introuvable)", () => pm.response.to.have.status(422));
+    language: text/javascript
+order: 33000

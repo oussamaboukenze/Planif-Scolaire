@@ -13,6 +13,8 @@ public class Enseignant {
     @Column(nullable = false)
     private String nom;
 
+    private String email;
+
     @Column(nullable = false)
     private String matiere;
 
@@ -35,6 +37,14 @@ public class Enseignant {
 
     public void setNom(String nom) {
         this.nom = nom;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getMatiere() {

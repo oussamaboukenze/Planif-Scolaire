@@ -9,5 +9,7 @@ import java.util.List;
 public interface AbsenceRepository extends JpaRepository<Absence, Long> {
     List<Absence> findByAppelId(Long appelId);
 
+    boolean existsByAppelIdAndEtudiantId(Long appelId, Long etudiantId);
+
     boolean existsByAppelIdAndEtudiantNomIgnoreCase(Long appelId, String etudiantNom);
 }

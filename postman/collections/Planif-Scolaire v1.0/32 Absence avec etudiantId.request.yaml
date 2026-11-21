@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{presencesUrl}}/api/appels/{{appelId}}/absences"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"etudiantId": {{etudiantId}}, "motif": "Retard", "justifiee": false}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      pm.test("Etudiant verifie via service-utilisateurs", () => { const a = pm.response.json(); pm.expect(a.etudiantId).to.eql(Number(pm.collectionVariables.get("etudiantId"))); pm.expect(a.etudiantNom).to.include("Sara"); });
+    language: text/javascript
+order: 32000

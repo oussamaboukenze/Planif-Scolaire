@@ -1,0 +1,701 @@
+{
+  "info": {
+    "name": "Planif-Scolaire DEMO (données seed 1001+)",
+    "description": "Tests GET/POST/PUT/PATCH/DELETE sur les données de démonstration (seed-demo.sql). Redémarrer les services pour remettre les données à zéro.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET 01 Classes",
+      "request": {
+        "method": "GET",
+        "url": "{{referentielUrl}}/api/classes",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Données de démo présentes\", () => pm.expect(pm.response.json().map(c => c.id)).to.include(1001));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 02 Enseignant 1001",
+      "request": {
+        "method": "GET",
+        "url": "{{referentielUrl}}/api/enseignants/1001",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Karim\", () => pm.expect(pm.response.json().email).to.eql(\"karim.benali@emsi.ma\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 03 Utilisateurs",
+      "request": {
+        "method": "GET",
+        "url": "{{utilisateursUrl}}/api/users",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"5 utilisateurs de démo au moins\", () => pm.expect(pm.response.json().length).to.be.at.least(4));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 04 Cours",
+      "request": {
+        "method": "GET",
+        "url": "{{planningUrl}}/api/cours",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Cours de démo\", () => pm.expect(pm.response.json().map(c => c.id)).to.include.members([1001,1002,1003,1004]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 05 Cours par classe",
+      "request": {
+        "method": "GET",
+        "url": "{{planningUrl}}/api/cours?classeId=1001",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 06 Detail enrichi 1001",
+      "request": {
+        "method": "GET",
+        "url": "{{planningUrl}}/api/cours/1001/detail",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Classe + enseignant + absences\", () => { const d = pm.response.json(); pm.expect(d.classe.nom).to.eql(\"5IIR-A\"); pm.expect(d.enseignant.nom).to.eql(\"Karim Benali\"); pm.expect(d.absences.length).to.be.at.least(2); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 07 Appel du cours 1001",
+      "request": {
+        "method": "GET",
+        "url": "{{presencesUrl}}/api/appels/cours/1001",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 08 Absences appel 1001",
+      "request": {
+        "method": "GET",
+        "url": "{{presencesUrl}}/api/appels/1001/absences",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 09 Gateway statique",
+      "request": {
+        "method": "GET",
+        "url": "{{gatewayUrl}}/api/cours/1001",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 10 Gateway dynamique",
+      "request": {
+        "method": "GET",
+        "url": "{{gatewayUrl}}/service-planning/api/cours/1001",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 11 Classe",
+      "request": {
+        "method": "POST",
+        "url": "{{referentielUrl}}/api/classes",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"5IIR-C\", \"niveau\": \"5IIR\", \"effectifMax\": 25}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 12 Utilisateur",
+      "request": {
+        "method": "POST",
+        "url": "{{utilisateursUrl}}/api/users",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Amine Fassi\", \"email\": \"amine{{$timestamp}}@emsi.ma\", \"role\": \"ETUDIANT\", \"actif\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 13 Cours (email a Karim)",
+      "request": {
+        "method": "POST",
+        "url": "{{planningUrl}}/api/cours",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "idempotencyKey",
+            "value": "demo-{{$guid}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"classeId\": 1002, \"enseignantId\": 1001, \"matiere\": \"Microservices\", \"dateHeure\": \"2026-12-{{jour}}T09:00:00\", \"salle\": \"Amphi {{$timestamp}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"jour\", String(10 + Math.floor(Math.random() * 18)).padStart(2, \"0\"));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 14 Absence etudiant 1003",
+      "request": {
+        "method": "POST",
+        "url": "{{presencesUrl}}/api/appels/1001/absences",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantId\": 1003, \"motif\": \"Maladie\", \"justifiee\": true}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"201 (ou 409 si deja saisie)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 15 Etudiant inactif -> 409",
+      "request": {
+        "method": "POST",
+        "url": "{{presencesUrl}}/api/appels/1001/absences",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantId\": 1004, \"motif\": \"Retard\", \"justifiee\": false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 16 Cours non realise -> 409",
+      "request": {
+        "method": "POST",
+        "url": "{{presencesUrl}}/api/appels/1002/absences",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"etudiantId\": 1001, \"motif\": \"Retard\", \"justifiee\": false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST 17 Conflit de creneau -> 409",
+      "request": {
+        "method": "POST",
+        "url": "{{planningUrl}}/api/cours",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "idempotencyKey",
+            "value": "demo-{{$guid}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"classeId\": 1003, \"enseignantId\": 1001, \"matiere\": \"Microservices\", \"dateHeure\": \"2026-11-23T09:00:00\", \"salle\": \"Salle 20\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT 18 Classe 1003",
+      "request": {
+        "method": "PUT",
+        "url": "{{referentielUrl}}/api/classes/1003",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"4IIR-A\", \"niveau\": \"4IIR\", \"effectifMax\": 40}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Effectif modifie\", () => pm.expect(pm.response.json().effectifMax).to.eql(40));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT 19 Utilisateur 1002",
+      "request": {
+        "method": "PUT",
+        "url": "{{utilisateursUrl}}/api/users/1002",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"nom\": \"Omar Bennani\", \"email\": \"omar.bennani@emsi.ma\", \"role\": \"ETUDIANT\", \"actif\": false}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PATCH 20 Cours 1002 REALISE",
+      "request": {
+        "method": "PATCH",
+        "url": "{{planningUrl}}/api/cours/1002/statut",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"statut\": \"REALISE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PATCH 21 Cours 1003 ANNULE",
+      "request": {
+        "method": "PATCH",
+        "url": "{{planningUrl}}/api/cours/1003/statut",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"statut\": \"ANNULE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PATCH 22 Transition interdite -> 409",
+      "request": {
+        "method": "PATCH",
+        "url": "{{planningUrl}}/api/cours/1001/statut",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"statut\": \"ANNULE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE 23 Classe 1004",
+      "request": {
+        "method": "DELETE",
+        "url": "{{referentielUrl}}/api/classes/1004",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE 24 Utilisateur 1005",
+      "request": {
+        "method": "DELETE",
+        "url": "{{utilisateursUrl}}/api/users/1005",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET 25 Classe supprimee -> 404",
+      "request": {
+        "method": "GET",
+        "url": "{{referentielUrl}}/api/classes/1004",
+        "header": []
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "referentielUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "planningUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "presencesUrl",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "utilisateursUrl",
+      "value": "http://localhost:8085"
+    },
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "jour",
+      "value": "15"
+    }
+  ]
+}

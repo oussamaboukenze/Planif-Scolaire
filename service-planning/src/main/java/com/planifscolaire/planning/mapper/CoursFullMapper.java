@@ -11,5 +11,6 @@ import org.mapstruct.*;
 public interface CoursFullMapper {
     @Mapping(target = "classe", ignore = true)
     @Mapping(target = "enseignant", ignore = true)
+    @Mapping(target = "absences", ignore = true)
     CoursDtoFull toDto(Cours cours);
 }

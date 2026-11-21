@@ -7,6 +7,16 @@ public class EnseignantDto {
 
     private String matiere;
 
+    private String email;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     private int chargeMaxHeures;
 
     public EnseignantDto() {}

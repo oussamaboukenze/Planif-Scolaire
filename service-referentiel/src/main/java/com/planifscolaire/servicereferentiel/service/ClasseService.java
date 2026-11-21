@@ -37,6 +37,11 @@ public class ClasseService {
         return save(getById(id), values);
     }
 
+    @Transactional
+    public void delete(Long id) {
+        repository.delete(getById(id));
+    }
+
     private Classe save(Classe entity, Classe values) {
         entity.setNom(values.getNom().strip());
         entity.setNiveau(values.getNiveau().strip());

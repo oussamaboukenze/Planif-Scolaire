@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{referentielUrl}}/api/classes"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"nom": "Temp {{runId}}", "niveau": "6e", "effectifMax": 25}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 201", () => pm.response.to.have.status(201));
+      pm.collectionVariables.set("classeTmpId", pm.response.json().id);
+    language: text/javascript
+order: 35000

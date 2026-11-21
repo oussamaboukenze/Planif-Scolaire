@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{utilisateursUrl}}/api/users/{{etudiantId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: '{"nom": "Sara Modifiee {{runId}}", "email": "etudiant{{runId}}@emsi.ma", "role": "ETUDIANT", "actif": true}'
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      pm.test("Nom modifie", () => pm.expect(pm.response.json().nom).to.include("Modifiee"));
+    language: text/javascript
+order: 29000

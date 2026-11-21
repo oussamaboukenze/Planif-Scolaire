@@ -1,0 +1,50 @@
+@utilisateurs = http://localhost:8085
+@referentiel = http://localhost:8081
+@presences = http://localhost:8083
+@planning = http://localhost:8082
+@gateway = http://localhost:8080
+
+# service-utilisateurs (8085) : CRUD des etudiants + verification depuis service-presences
+
+### Creer un etudiant -> 201
+POST {{utilisateurs}}/api/users
+Content-Type: application/json
+
+{
+  "nom": "Sara El Amrani",
+  "email": "sara-{{$random.alphanumeric(6)}}@emsi.ma",
+  "role": "ETUDIANT",
+  "actif": true
+}
+
+> {%
+    client.test("201 Created", () => client.assert(response.status === 201, "status " + response.status));
+    client.global.set("etudiantId", response.body.id);
+%}
+
+### Lire l'etudiant -> 200
+GET {{utilisateurs}}/api/users/{{etudiantId}}
+
+### Etudiant invalide -> 400
+POST {{utilisateurs}}/api/users
+Content-Type: application/json
+
+{ "nom": "", "email": "pas-un-email", "role": "ETUDIANT" }
+
+### Saisir une absence avec etudiantId (cours REALISE requis) -> 201
+POST {{presences}}/api/appels/{{appelId}}/absences
+Content-Type: application/json
+
+{ "etudiantId": {{etudiantId}}, "motif": "Retard", "justifiee": false }
+
+### Detail enrichi (classe + enseignant + absences) -> 200
+GET {{planning}}/api/cours/{{coursId}}/detail
+
+### Supprimer une classe -> 204
+DELETE {{referentiel}}/api/classes/{{classeId}}
+
+### Gateway : route statique
+GET {{gateway}}/api/users
+
+### Gateway : route dynamique (discovery locator)
+GET {{gateway}}/service-utilisateurs/api/users

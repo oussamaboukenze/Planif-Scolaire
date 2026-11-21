@@ -9,6 +9,8 @@ public class AbsenceDto {
 
     private Long appelId;
 
+    private Long etudiantId;
+
     private String etudiantNom;
 
     private String motif;
@@ -16,6 +18,14 @@ public class AbsenceDto {
     private boolean justifiee;
 
     public AbsenceDto() {}
+
+    public Long getEtudiantId() {
+        return etudiantId;
+    }
+
+    public void setEtudiantId(Long etudiantId) {
+        this.etudiantId = etudiantId;
+    }
 
     public AbsenceDto(Long id, Long appelId, String etudiantNom, String motif, boolean justifiee) {
         this.id = id;

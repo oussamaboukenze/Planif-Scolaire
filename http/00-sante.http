@@ -1,0 +1,37 @@
+@referentiel = http://localhost:8081
+@planning = http://localhost:8082
+@presences = http://localhost:8083
+@notifications = http://localhost:8084
+@gateway = http://localhost:8080
+@registry = http://localhost:8761
+@config = http://localhost:8888
+
+# Etat des services (chaque service doit repondre "UP")
+# Lancer chaque requete avec la fleche verte a gauche (ou "Run All" en haut).
+
+### service-referentiel (8081)
+GET {{referentiel}}/actuator/health
+
+> {% client.test("referentiel UP", () => client.assert(response.body.status === "UP")); %}
+
+### service-planning (8082)
+GET {{planning}}/actuator/health
+
+> {% client.test("planning UP", () => client.assert(response.body.status === "UP")); %}
+
+### service-presences (8083)
+GET {{presences}}/actuator/health
+
+> {% client.test("presences UP", () => client.assert(response.body.status === "UP")); %}
+
+### notification-service (8084)
+GET {{notifications}}/actuator/health
+
+> {% client.test("notifications UP", () => client.assert(response.body.status === "UP")); %}
+
+### Eureka : liste des services enregistres
+GET {{registry}}/eureka/apps
+Accept: application/json
+
+### Config server : configuration servie au planning
+GET {{config}}/service-planning/default

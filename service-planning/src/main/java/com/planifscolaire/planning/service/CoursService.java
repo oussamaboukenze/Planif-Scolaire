@@ -34,6 +34,7 @@ public class CoursService {
     private final ProcessedEvents processed;
     private final CoursMapper mapper;
     private final CoursFullMapper fullMapper;
+    private final ResilientPresencesLookup presences;
 
     public CoursService(
             CoursRepository repository,
@@ -42,7 +43,8 @@ public class CoursService {
             EventOutbox outbox,
             ProcessedEvents processed,
             CoursMapper mapper,
-            CoursFullMapper fullMapper) {
+            CoursFullMapper fullMapper,
+            ResilientPresencesLookup presences) {
         this.repository = repository;
         this.referentiel = referentiel;
         this.locks = locks;
@@ -50,6 +52,7 @@ public class CoursService {
         this.processed = processed;
         this.mapper = mapper;
         this.fullMapper = fullMapper;
+        this.presences = presences;
     }
 
     public List<Cours> getAll(Long classeId) {
@@ -70,6 +73,7 @@ public class CoursService {
         CoursDtoFull detail = fullMapper.toDto(cours);
         detail.setClasse(referentiel.classe(cours.getClasseId()));
         detail.setEnseignant(referentiel.enseignant(cours.getEnseignantId()));
+        detail.setAbsences(presences.absencesDuCours(cours.getId()));
         return detail;
     }
 
@@ -113,7 +117,8 @@ public class CoursService {
                         UUID.randomUUID(),
                         cours.getId(),
                         cours.getClasseId(),
-                        cours.getDateHeure()));
+                        cours.getDateHeure(),
+                        enseignant.getEmail()));
         return cours;
     }
 
@@ -137,7 +142,8 @@ public class CoursService {
                             UUID.randomUUID(),
                             cours.getId(),
                             cours.getClasseId(),
-                            cours.getDateHeure()));
+                            cours.getDateHeure(),
+                            emailEnseignant(cours.getEnseignantId())));
         }
         return cours;
     }
@@ -151,5 +157,15 @@ public class CoursService {
         Cours cours = get(event.getCoursId());
         cours.setNbAbsencesSignalees(cours.getNbAbsencesSignalees() + 1);
         processed.save(new ProcessedEvent(event.getEventId()));
+    }
+
+    /** Email de l'enseignant pour la notification d'annulation (null si referentiel indisponible). */
+    private String emailEnseignant(Long enseignantId) {
+        try {
+            EnseignantDto enseignant = referentiel.enseignant(enseignantId);
+            return enseignant == null ? null : enseignant.getEmail();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 }

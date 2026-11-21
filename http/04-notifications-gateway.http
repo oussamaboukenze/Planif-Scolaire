@@ -1,0 +1,34 @@
+@referentiel = http://localhost:8081
+@planning = http://localhost:8082
+@presences = http://localhost:8083
+@notifications = http://localhost:8084
+@gateway = http://localhost:8080
+@registry = http://localhost:8761
+@config = http://localhost:8888
+
+# notification-service (8084) : emails envoyes depuis Kafka
+# Les emails sont visibles dans Mailpit : http://localhost:8025
+
+### Statut des emails du cours -> SENT
+GET {{notifications}}/api/notifications/cours/{{coursId}}
+
+> {%
+    client.test("200", () => client.assert(response.status === 200));
+    client.test("email SENT", () => client.assert(response.body.some(n => n.status === "SENT")));
+%}
+
+### gateway-service (8080) : memes API, routees via Eureka
+GET {{gateway}}/api/classes
+X-Client-Id: demo-intellij
+
+### Gateway -> planning
+GET {{gateway}}/api/cours/{{coursId}}
+X-Client-Id: demo-intellij
+
+### Gateway -> presences
+GET {{gateway}}/api/appels/cours/{{coursId}}
+X-Client-Id: demo-intellij
+
+### Rate limit : cliquer vite ~12 fois sur cette requete -> certaines reponses 429
+GET {{gateway}}/api/classes
+X-Client-Id: burst-test

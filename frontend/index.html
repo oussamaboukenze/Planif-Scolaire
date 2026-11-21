@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planif-Scolaire</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <aside class="side">
+    <a class="brand" href="#/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="23" rx="3"/><path d="M3 12h26M10 3v5M22 3v5"/><path class="tick" d="M10 19l4 4 8-8"/></svg>
+      <span>Planif<br>Scolaire</span>
+    </a>
+    <nav>
+      <a href="#/" data-route="">Aperçu</a>
+      <a href="#/planning" data-route="planning">Emploi du temps</a>
+      <a href="#/presences" data-route="presences">Feuilles d'appel</a>
+      <a href="#/referentiel" data-route="referentiel">Classes et enseignants</a>
+      <a href="#/etudiants" data-route="etudiants">Étudiants</a>
+      <a href="#/notifications" data-route="notifications">Emails envoyés</a>
+      <a href="#/services" data-route="services">Services</a>
+    </nav>
+    <button class="journal-btn" id="journalBtn" type="button">
+      Journal des requêtes <span id="journalCount">0</span>
+    </button>
+  </aside>
+
+  <main id="view" tabindex="-1"></main>
+
+  <aside class="journal" id="journal" aria-label="Journal des requêtes" hidden>
+    <header>
+      <h2>Journal des requêtes</h2>
+      <button type="button" class="icon" id="journalClose" aria-label="Fermer">×</button>
+    </header>
+    <p class="journal-hint">Chaque appel passe par la Gateway (8080), qui le route vers le bon microservice.</p>
+    <ol id="journalList"></ol>
+  </aside>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+  <aside class="drawer" id="drawer" hidden></aside>
+  <dialog id="modal"></dialog>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

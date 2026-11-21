@@ -11,6 +11,10 @@ public class EnseignantDto {
     @Size(max = 255)
     private String nom;
 
+    @Email
+    @Size(max = 255)
+    private String email;
+
     @NotBlank
     @Size(max = 255)
     private String matiere;
@@ -32,6 +36,14 @@ public class EnseignantDto {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getNom() {

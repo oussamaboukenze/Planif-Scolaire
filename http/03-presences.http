@@ -1,0 +1,74 @@
+@referentiel = http://localhost:8081
+@planning = http://localhost:8082
+@presences = http://localhost:8083
+@notifications = http://localhost:8084
+@gateway = http://localhost:8080
+@registry = http://localhost:8761
+@config = http://localhost:8888
+
+# service-presences (8083) : feuilles d'appel et absences
+# Prerequis : 02-planning.http (coursId). L'appel est cree via Kafka :
+# si la 1re requete renvoie 404, attendre 1-2 secondes et relancer.
+
+### Feuille d'appel du cours (creee automatiquement) -> 200, OUVERT
+GET {{presences}}/api/appels/cours/{{coursId}}
+
+> {%
+    client.test("200", () => client.assert(response.status === 200, "status " + response.status + " (relancer si 404)"));
+    client.global.set("appelId", response.body.id);
+%}
+
+### Absence AVANT realisation du cours -> 409
+POST {{presences}}/api/appels/{{appelId}}/absences
+Content-Type: application/json
+
+{
+  "etudiantNom": "Sara Ali",
+  "motif": "Maladie",
+  "justifiee": true
+}
+
+> {% client.test("409", () => client.assert(response.status === 409)); %}
+
+### Passer le cours a REALISE (service-planning) -> 200
+PATCH {{planning}}/api/cours/{{coursId}}/statut
+Content-Type: application/json
+
+{ "statut": "REALISE" }
+
+> {% client.test("200", () => client.assert(response.status === 200)); %}
+
+### Saisir une absence -> 201
+POST {{presences}}/api/appels/{{appelId}}/absences
+Content-Type: application/json
+
+{
+  "etudiantNom": "Sara Ali",
+  "motif": "Maladie",
+  "justifiee": true
+}
+
+> {% client.test("201", () => client.assert(response.status === 201)); %}
+
+### Lister les absences de l'appel -> 200
+GET {{presences}}/api/appels/{{appelId}}/absences
+
+> {% client.test("1 absence au moins", () => client.assert(response.body.length >= 1)); %}
+
+### Compteur mis a jour dans le planning (via Kafka) -> nbAbsencesSignalees >= 1
+GET {{planning}}/api/cours/{{coursId}}
+
+> {% client.test("compteur", () => client.assert(response.body.nbAbsencesSignalees >= 1, "relancer dans 1 s")); %}
+
+### Absence invalide -> 400
+POST {{presences}}/api/appels/{{appelId}}/absences
+Content-Type: application/json
+
+{ "justifiee": false }
+
+> {% client.test("400", () => client.assert(response.status === 400)); %}
+
+### Appel inexistant -> 404
+GET {{presences}}/api/appels/999999
+
+> {% client.test("404", () => client.assert(response.status === 404)); %}
