@@ -225,7 +225,7 @@ pages.planning = async () => {
   view.innerHTML = `<div class="page-head"><div><h1>Emploi du temps</h1></div></div><p class="muted">Chargement…</p>`;
   await loadAll("cours", "classes", "enseignants", "appels");
   if (!weekStart) {
-    const upcoming = [...db.cours].filter((c) => new Date(c.dateHeure) >= mondayOf(new Date())).sort((a, b) => a.dateHeure.localeCompare(b.dateHeure))[0];
+    const upcoming = [...db.cours].filter((c) => new Date(c.dateHeure) >= new Date()).sort((a, b) => a.dateHeure.localeCompare(b.dateHeure))[0];
     weekStart = mondayOf(upcoming ? upcoming.dateHeure : new Date());
   }
   drawPlanning();
@@ -495,7 +495,7 @@ pages.notifications = async (params) => {
 
 /* ---------- Services ---------- */
 const SVC = [
-  { key: "config", name: "config-server", port: 8888, health: "/svc/config/actuator/health", role: "Fournit la configuration (config-repo) au démarrage de chaque service." },
+  { key: "config", name: "config-server", port: 8888, health: "/svc/config/service-planning/default", role: "Fournit la configuration (config-repo) au démarrage de chaque service." },
   { key: "registry", name: "Eureka", port: 8761, health: "/svc/registry/actuator/health", role: "Annuaire : chaque service s'y enregistre, la Gateway et Feign y cherchent les adresses." },
   { key: "gateway", name: "Gateway", port: 8080, health: "/svc/gateway/actuator/health", role: "Point d'entrée unique : routes /api/**, load balancing (lb://), limite de 5 requêtes/s." },
   { key: "referentiel", name: "referentiel", port: 8081, health: "/svc/referentiel/actuator/health", role: "Classes et enseignants." },
@@ -506,7 +506,7 @@ const SVC = [
 ];
 
 async function healthOf(s) {
-  try { const r = await api("GET", s.health); return r?.status === "UP" ? "UP" : "DOWN"; }
+  try { const r = await api("GET", s.health); return r?.status === "UP" || s.key === "config" ? "UP" : "DOWN"; }
   catch (e) { return e.status === 404 ? "UP" : "DOWN"; } // registry/config sans actuator : 404 = démarré
 }
 async function checkHealth() {

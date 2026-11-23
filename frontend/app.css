@@ -169,7 +169,7 @@ td.actions .btn { margin-left: 6px; }
 .timetable {
   --h: 64px;
   display: grid;
-  grid-template-columns: 58px repeat(6, minmax(120px, 1fr));
+  grid-template-columns: 58px repeat(6, minmax(96px, 1fr));
   background: #fff;
   border: 1px solid var(--bord);
   border-radius: var(--radius);
